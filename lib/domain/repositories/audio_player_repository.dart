@@ -8,6 +8,7 @@ abstract class AudioPlayerRepository {
   Stream<Duration> get durationStream;
   Stream<Track?> get currentTrackStream;
   Stream<String?> get playbackErrorStream;
+  Stream<AudioRepeatMode> get repeatModeStream;
 
   Future<void> play(Track track);
   Future<void> pause();
@@ -24,8 +25,11 @@ abstract class AudioPlayerRepository {
   Future<List<Track>> searchTracks(String query);
   Future<void> toggleFavorite(String trackId);
   Future<void> toggleSelect(String trackId);
-  Future<void> removeTrack(String trackId);
-  Future<void> removeTracks(List<String> trackIds);
+  Future<void> removeTrack(String trackId, {bool deleteFromDevice = false});
+  Future<void> removeTracks(
+    List<String> trackIds, {
+    bool deleteFromDevice = false,
+  });
 
   Future<bool> checkPermissions();
   Future<bool> requestPermissions();

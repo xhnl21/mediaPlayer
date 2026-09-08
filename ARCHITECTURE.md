@@ -225,18 +225,24 @@ En estricto cumplimiento de [.agents/newFunctionPlayerMedia.md](file:///Users/pr
 - **Data Source y Repositorio**: `DriftFavoritesDataSourceImpl` y `FavoritesRepositoryImpl` encapsulan las operaciones de inserción, consulta ordenada por fecha, eliminación por ID y suscripción reactiva a cambios mediante `watchAllFavorites()`.
 - **In-Memory Testing**: Para pruebas automatizadas de integración y repositorios, `AppDatabase` soporta constructores con `NativeDatabase.memory()`, permitiendo ejecución de tests instantánea y sin efectos secundarios en el sistema de archivos físico.
 
-### 2. Modos de Repetición (`AudioRepeatMode`)
-- Modos disponibles: `off` (sin repetición), `once` (repite la pista actual una vez al finalizar), y `all` (bucle continuo de la playlist).
+### 2. Modos de Repetición y Bucle Nativo (`AudioRepeatMode`)
+- Modos disponibles:
+  - `off`: Sin repetición. Al terminar la pista se avanza normalmente o se pausa si es la última canción.
+  - `once`: Repite el audio actual una sola vez al terminar (`seek(Duration.zero)` + `play()`), retornando inmediatamente el modo a `off` y emitiendo el cambio a través de `repeatModeStream`.
+  - `all`: Bucle indefinido del audio actual (`LoopMode.one` nativo de hardware en `just_audio` o repetición continua al completarse), permitiendo reproducción cíclica sin interrupciones.
 - Para evitar colisiones de nombres con el `RepeatMode` del framework Material de Flutter (`package:flutter/material.dart`), el enum del dominio se nombra `AudioRepeatMode` con alias tipado `typedef RepeatMode = AudioRepeatMode;`.
-- Gestionado reactivamente por `AudioPlayerCubit` e integrado con listeners de finalización de pista en `AudioPlayerRepositoryImpl`.
+- La capa de presentación (`PlaylistTracksScreen` y `AudioPlayerCubit`) se suscribe reactivamente a `audioPlayerRepository.repeatModeStream`, actualizando los iconos dinámicamente (`repeat_rounded`, `repeat_one_rounded`, `all_inclusive_rounded`).
 
 ### 3. Reproducción Aleatoria (Shuffle)
 - Botón de alternancia de reproducción aleatoria accesible desde la barra de herramientas de la lista de pistas.
 - Cuando está activo, la lista de pistas mantiene un orden pseudoaleatorio barajado sin repetición de temas hasta agotar la cola.
 
-### 4. Eliminación de Pistas y Confirmación Modal
-- **Eliminación individual**: Cada pista cuenta con un icono de borrado que despliega un diálogo de confirmación `AlertDialog` informando al usuario que la acción solo remueve la pista de la lista de reproducción en memoria y no elimina archivos físicos del almacenamiento del dispositivo.
-- **Selección múltiple**: Modo de selección por checkboxes con barra de acciones que indica la cantidad de pistas seleccionadas y botón de eliminación en bloque ("REMOVE ALL (N)").
+### 4. Diálogo de Opciones de Eliminación: Lista vs. Dispositivo Físico
+- **Diálogo Modal Explicito (`_showDeleteOptionsDialog`)**: Al intentar eliminar una o varias pistas (individual o selección múltiple), la aplicación despliega un diálogo modal que le consulta al usuario dónde desea realizar el borrado:
+  1. **"Remove from Playlist Only" (`DeleteOption.playlistOnly`)**: Remueve las pistas únicamente de la lista de reproducción en memoria, preservando intacto el archivo físico en el almacenamiento del dispositivo.
+  2. **"Delete from Device & Playlist" (`DeleteOption.deviceAndPlaylist`)**: Elimina el archivo físico de forma permanente del almacenamiento local del dispositivo (`File(audioUrl).delete()`), lo remueve de la lista de reproducción en memoria y purga el registro de favoritos en la base de datos Drift SQLite.
+  3. **"CANCEL" (`DeleteOption.cancel`)**: Descarta la acción sin realizar modificaciones.
+- **Selección Múltiple (Batch Delete)**: Modo de selección por checkboxes con barra de acciones que indica la cantidad de pistas seleccionadas y botón de eliminación en bloque ("Delete (N)"), activando el mismo flujo de decisión explícito con soporte de borrado masivo físico o en memoria.
 
 ### 5. Supresión Definitiva de Iconos de Carrito de Compra
 - Se ha eliminado cualquier icono, botón, tooltip o texto alusivo a "carrito de compra" en las vistas de pistas, asegurando que la interfaz esté 100% enfocada en reproducción de audio y gestión de favoritos.

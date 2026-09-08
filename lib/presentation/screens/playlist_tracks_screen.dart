@@ -351,15 +351,39 @@ class _PlaylistTracksScreenState extends State<PlaylistTracksScreen> {
                     icon: Icon(
                       playerState.repeatMode == AudioRepeatMode.once
                           ? Icons.repeat_one_rounded
+                          : playerState.repeatMode == AudioRepeatMode.all
+                          ? Icons.all_inclusive_rounded
                           : Icons.repeat_rounded,
                       color: playerState.repeatMode != AudioRepeatMode.off
                           ? AppColors.accentCoral
                           : AppColors.textLight.withValues(alpha: 0.6),
                       size: context.iconSize(20),
                     ),
-                    tooltip: playerState.repeatMode.label,
+                    tooltip: playerState.repeatMode == AudioRepeatMode.once
+                        ? 'Repeat Once (Current Track)'
+                        : playerState.repeatMode == AudioRepeatMode.all
+                        ? 'Repeat Indefinitely (Loop Current Track)'
+                        : 'Repeat: Off',
                     onPressed: () {
+                      final nextMode = playerState.repeatMode.next;
                       context.read<AudioPlayerCubit>().cycleRepeatMode();
+                      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            nextMode == AudioRepeatMode.once
+                                ? 'Repeat Once: This track will replay once upon finish'
+                                : nextMode == AudioRepeatMode.all
+                                ? 'Repeat Indefinitely: Looping current track'
+                                : 'Repeat: Off',
+                            style: TextStyle(fontSize: context.sp(12)),
+                          ),
+                          duration: const Duration(seconds: 2),
+                          backgroundColor: nextMode != AudioRepeatMode.off
+                              ? AppColors.accentCoral
+                              : AppColors.cardSurfaceLight,
+                        ),
+                      );
                     },
                   ),
 
@@ -600,40 +624,97 @@ class _PlaylistTracksScreenState extends State<PlaylistTracksScreen> {
   }
 
   Future<void> _confirmSingleDelete(BuildContext context, Track track) async {
-    final confirmed = await _showConfirmationDialog(
+    final option = await _showDeleteOptionsDialog(
       context: context,
-      title: 'Remove Track',
-      message:
-          'Are you sure you want to remove "${track.title}" from this playlist? The audio file will not be deleted from your device.',
-      confirmLabel: 'REMOVE',
+      title: 'Delete Track',
+      targetName: track.title,
+      isBatch: false,
     );
 
-    if (confirmed == true && context.mounted) {
-      await context.read<AudioPlayerCubit>().removeTrack(track.id);
+    if (option == null || option == DeleteOption.cancel || !context.mounted) {
+      return;
+    }
+
+    final deleteFromDevice = option == DeleteOption.deviceAndPlaylist;
+    await context.read<AudioPlayerCubit>().removeTrack(
+      track.id,
+      deleteFromDevice: deleteFromDevice,
+    );
+
+    if (deleteFromDevice && context.mounted) {
+      await context.read<FavoritesCubit>().removeFavorite(track.id);
+    }
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            deleteFromDevice
+                ? 'Deleted "${track.title}" from device storage and playlist'
+                : 'Removed "${track.title}" from playlist',
+          ),
+          backgroundColor: deleteFromDevice
+              ? AppColors.accentCoral
+              : AppColors.cardSurfaceLight,
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 
   Future<void> _confirmBatchDelete(BuildContext context, int count) async {
-    final confirmed = await _showConfirmationDialog(
+    final option = await _showDeleteOptionsDialog(
       context: context,
-      title: 'Remove Multiple Tracks',
-      message:
-          'Are you sure you want to remove $count tracks from this playlist? The audio files will not be deleted from your device.',
-      confirmLabel: 'REMOVE ALL ($count)',
+      title: 'Delete Multiple Tracks',
+      targetName: '$count tracks selected',
+      isBatch: true,
     );
 
-    if (confirmed == true && context.mounted) {
-      await context.read<AudioPlayerCubit>().removeSelectedTracks();
+    if (option == null || option == DeleteOption.cancel || !context.mounted) {
+      return;
+    }
+
+    final deleteFromDevice = option == DeleteOption.deviceAndPlaylist;
+    final selectedIds = context
+        .read<AudioPlayerCubit>()
+        .state
+        .selectedTrackIds
+        .toList();
+
+    await context.read<AudioPlayerCubit>().removeSelectedTracks(
+      deleteFromDevice: deleteFromDevice,
+    );
+
+    if (deleteFromDevice && context.mounted) {
+      for (final id in selectedIds) {
+        await context.read<FavoritesCubit>().removeFavorite(id);
+      }
+    }
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            deleteFromDevice
+                ? 'Deleted $count tracks from device and playlist'
+                : 'Removed $count tracks from playlist',
+          ),
+          backgroundColor: deleteFromDevice
+              ? AppColors.accentCoral
+              : AppColors.cardSurfaceLight,
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 
-  Future<bool?> _showConfirmationDialog({
+  Future<DeleteOption?> _showDeleteOptionsDialog({
     required BuildContext context,
     required String title,
-    required String message,
-    required String confirmLabel,
+    required String targetName,
+    required bool isBatch,
   }) {
-    return showDialog<bool>(
+    return showDialog<DeleteOption>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
@@ -659,15 +740,137 @@ class _PlaylistTracksScreenState extends State<PlaylistTracksScreen> {
               ),
             ],
           ),
-          content: Text(
-            message,
-            style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textSecondary,
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  targetName,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.textLight,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Where would you like to delete this from?',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Option 1: Remove from playlist only
+                InkWell(
+                  onTap: () =>
+                      Navigator.of(dialogContext)
+                          .pop(DeleteOption.playlistOnly),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.cardSurfaceLight,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.divider, width: 1),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.playlist_remove_rounded,
+                          color: AppColors.textLight,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Remove from Playlist Only',
+                                style: TextStyle(
+                                  color: AppColors.textLight,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: context.sp(12),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Keeps file on device storage',
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: context.sp(10),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Option 2: Delete from device & playlist
+                InkWell(
+                  onTap: () =>
+                      Navigator.of(dialogContext)
+                          .pop(DeleteOption.deviceAndPlaylist),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.accentCoral.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppColors.accentCoral.withValues(alpha: 0.6),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.delete_forever_rounded,
+                          color: AppColors.accentCoral,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Delete from Device & Playlist',
+                                style: TextStyle(
+                                  color: AppColors.accentCoral,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: context.sp(12),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Permanently deletes file from storage',
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: context.sp(10),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
+              onPressed: () =>
+                  Navigator.of(dialogContext).pop(DeleteOption.cancel),
               child: Text(
                 'CANCEL',
                 style: TextStyle(
@@ -676,26 +879,14 @@ class _PlaylistTracksScreenState extends State<PlaylistTracksScreen> {
                 ),
               ),
             ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.accentCoral,
-                foregroundColor: AppColors.textLight,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: Text(
-                confirmLabel,
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
           ],
         );
       },
     );
   }
 }
+
+enum DeleteOption { playlistOnly, deviceAndPlaylist, cancel }
 
 class _FilterTabPill extends StatelessWidget {
   const _FilterTabPill({

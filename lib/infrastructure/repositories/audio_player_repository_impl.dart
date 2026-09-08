@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
@@ -13,10 +14,13 @@ class AudioPlayerRepositoryImpl implements AudioPlayerRepository {
   AudioPlayerRepositoryImpl({
     AudioPlayer? player,
     LocalAudioDataSource? localAudioDataSource,
+    List<Track>? initialTracks,
   }) : _player = player ?? AudioPlayer(),
        _localAudioDataSource =
            localAudioDataSource ?? LocalAudioDataSourceImpl() {
-    _tracks = List<Track>.from(MusicMockDataSource.defaultTracks);
+    _tracks = List<Track>.from(
+      initialTracks ?? MusicMockDataSource.defaultTracks,
+    );
     _playlists = List<Playlist>.from(MusicMockDataSource.defaultPlaylists);
     _currentTrack = _tracks.isNotEmpty ? _tracks.first : null;
 
@@ -40,6 +44,7 @@ class AudioPlayerRepositoryImpl implements AudioPlayerRepository {
   final _durationController = StreamController<Duration>.broadcast();
   final _currentTrackController = StreamController<Track?>.broadcast();
   final _playbackErrorController = StreamController<String?>.broadcast();
+  final _repeatModeController = StreamController<AudioRepeatMode>.broadcast();
 
   StreamSubscription<PlayerState>? _playerStateSub;
   StreamSubscription<Duration>? _positionSub;
@@ -112,6 +117,9 @@ class AudioPlayerRepositoryImpl implements AudioPlayerRepository {
   Stream<String?> get playbackErrorStream => _playbackErrorController.stream;
 
   @override
+  Stream<AudioRepeatMode> get repeatModeStream => _repeatModeController.stream;
+
+  @override
   Future<void> play(Track track) async {
     _currentTrack = track;
     _currentTrackController.add(_currentTrack);
@@ -132,6 +140,10 @@ class AudioPlayerRepositoryImpl implements AudioPlayerRepository {
         } else {
           await _player.setFilePath(track.audioUrl);
         }
+        // Ensure loop mode is set on the native audio player
+        await _player.setLoopMode(
+          _repeatMode == AudioRepeatMode.all ? LoopMode.one : LoopMode.off,
+        );
         await _player.play();
       } else {
         // Track without URL (e.g. mock track in UI)
@@ -188,6 +200,17 @@ class AudioPlayerRepositoryImpl implements AudioPlayerRepository {
   @override
   Future<void> setRepeatMode(AudioRepeatMode mode) async {
     _repeatMode = mode;
+    _repeatModeController.add(_repeatMode);
+    try {
+      // AudioRepeatMode.all loops the current audio indefinitely via just_audio's native LoopMode.one
+      if (mode == AudioRepeatMode.all) {
+        await _player.setLoopMode(LoopMode.one);
+      } else {
+        await _player.setLoopMode(LoopMode.off);
+      }
+    } catch (e) {
+      debugPrint('AudioPlayer setLoopMode exception: $e');
+    }
   }
 
   @override
@@ -212,21 +235,37 @@ class AudioPlayerRepositoryImpl implements AudioPlayerRepository {
   void _onTrackCompleted() async {
     if (_tracks.isEmpty) return;
 
+    // 1. Repeat current track once: replay and revert to off
     if (_repeatMode == AudioRepeatMode.once) {
       _repeatMode = AudioRepeatMode.off;
-      if (_currentTrack != null) {
-        await play(_currentTrack!);
+      _repeatModeController.add(AudioRepeatMode.off);
+      try {
+        await _player.seek(Duration.zero);
+        await _player.play();
+      } catch (e) {
+        debugPrint('AudioPlayer repeat once exception: $e');
+        if (_currentTrack != null) {
+          await play(_currentTrack!);
+        }
       }
       return;
     }
 
-    if (_repeatMode == AudioRepeatMode.all && _tracks.length == 1) {
-      if (_currentTrack != null) {
-        await play(_currentTrack!);
+    // 2. Repeat current track indefinitely in a loop
+    if (_repeatMode == AudioRepeatMode.all) {
+      try {
+        await _player.seek(Duration.zero);
+        await _player.play();
+      } catch (e) {
+        debugPrint('AudioPlayer repeat loop exception: $e');
+        if (_currentTrack != null) {
+          await play(_currentTrack!);
+        }
       }
       return;
     }
 
+    // 3. Normal / Shuffle progression
     if (_isShuffle) {
       await _nextShuffled();
     } else {
@@ -296,9 +335,20 @@ class AudioPlayerRepositoryImpl implements AudioPlayerRepository {
   }
 
   @override
-  Future<void> removeTrack(String trackId) async {
+  Future<void> removeTrack(
+    String trackId, {
+    bool deleteFromDevice = false,
+  }) async {
+    final trackIndex = _tracks.indexWhere((t) => t.id == trackId);
+    if (trackIndex == -1) return;
+    final track = _tracks[trackIndex];
+
+    if (deleteFromDevice) {
+      await _deletePhysicalFile(track.audioUrl);
+    }
+
     final isDeletingCurrent = _currentTrack?.id == trackId;
-    _tracks.removeWhere((t) => t.id == trackId);
+    _tracks.removeAt(trackIndex);
     _shuffledOrder.remove(trackId);
 
     if (isDeletingCurrent) {
@@ -313,8 +363,19 @@ class AudioPlayerRepositoryImpl implements AudioPlayerRepository {
   }
 
   @override
-  Future<void> removeTracks(List<String> trackIds) async {
+  Future<void> removeTracks(
+    List<String> trackIds, {
+    bool deleteFromDevice = false,
+  }) async {
     final idSet = trackIds.toSet();
+    final tracksToDelete = _tracks.where((t) => idSet.contains(t.id)).toList();
+
+    if (deleteFromDevice) {
+      for (final t in tracksToDelete) {
+        await _deletePhysicalFile(t.audioUrl);
+      }
+    }
+
     final isDeletingCurrent =
         _currentTrack != null && idSet.contains(_currentTrack!.id);
     _tracks.removeWhere((t) => idSet.contains(t.id));
@@ -328,6 +389,24 @@ class AudioPlayerRepositoryImpl implements AudioPlayerRepository {
         _currentTrack = null;
         _currentTrackController.add(null);
       }
+    }
+  }
+
+  Future<void> _deletePhysicalFile(String audioUrl) async {
+    if (audioUrl.isEmpty) return;
+    if (audioUrl.startsWith('http://') ||
+        audioUrl.startsWith('https://') ||
+        audioUrl.startsWith('mock://')) {
+      return;
+    }
+    try {
+      final file = File(audioUrl);
+      if (await file.exists()) {
+        await file.delete();
+      }
+    } catch (e) {
+      debugPrint('AudioPlayerRepositoryImpl._deletePhysicalFile exception: $e');
+      _playbackErrorController.add('Could not delete physical audio file: $e');
     }
   }
 
@@ -413,5 +492,6 @@ class AudioPlayerRepositoryImpl implements AudioPlayerRepository {
     _durationController.close();
     _currentTrackController.close();
     _playbackErrorController.close();
+    _repeatModeController.close();
   }
 }

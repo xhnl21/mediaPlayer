@@ -5,7 +5,8 @@ class RemoveTrackUseCase {
 
   final AudioPlayerRepository _repository;
 
-  Future<void> execute(String trackId) => _repository.removeTrack(trackId);
+  Future<void> execute(String trackId, {bool deleteFromDevice = false}) =>
+      _repository.removeTrack(trackId, deleteFromDevice: deleteFromDevice);
 }
 
 class RemoveTracksUseCase {
@@ -13,8 +14,10 @@ class RemoveTracksUseCase {
 
   final AudioPlayerRepository _repository;
 
-  Future<void> execute(List<String> trackIds) =>
-      _repository.removeTracks(trackIds);
+  Future<void> execute(
+    List<String> trackIds, {
+    bool deleteFromDevice = false,
+  }) => _repository.removeTracks(trackIds, deleteFromDevice: deleteFromDevice);
 }
 
 class SetRepeatModeUseCase {

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:media_player/application/application.dart';
 import 'package:media_player/domain/player.dart';
@@ -68,6 +70,22 @@ void main() {
         expect(cubit.state.repeatMode, AudioRepeatMode.once);
       },
     );
+
+    test('repository repeatModeStream emits updates that update cubit state reactively', () async {
+      expect(cubit.state.repeatMode, AudioRepeatMode.off);
+
+      await repository.setRepeatMode(AudioRepeatMode.all);
+      await Future.delayed(const Duration(milliseconds: 50));
+      expect(cubit.state.repeatMode, AudioRepeatMode.all);
+
+      await repository.setRepeatMode(AudioRepeatMode.once);
+      await Future.delayed(const Duration(milliseconds: 50));
+      expect(cubit.state.repeatMode, AudioRepeatMode.once);
+
+      await repository.setRepeatMode(AudioRepeatMode.off);
+      await Future.delayed(const Duration(milliseconds: 50));
+      expect(cubit.state.repeatMode, AudioRepeatMode.off);
+    });
   });
 
   group('AudioPlayerCubit Enhancements - Shuffle Mode Tests', () {
@@ -118,10 +136,65 @@ void main() {
       expect(initialCount, greaterThan(1));
       final trackToRemove = cubit.state.tracks.first;
 
-      await cubit.removeTrack(trackToRemove.id);
+      await cubit.removeTrack(trackToRemove.id, deleteFromDevice: false);
 
       expect(cubit.state.tracks.length, initialCount - 1);
       expect(cubit.state.tracks.any((t) => t.id == trackToRemove.id), isFalse);
+    });
+
+    test('removeTrack with deleteFromDevice: true removes track and deletes physical file from storage', () async {
+      // Create a temporary file on disk
+      final tempDir = Directory.systemTemp.createTempSync('player_test_');
+      final tempFile = File('${tempDir.path}/test_audio_track.mp3');
+      await tempFile.writeAsString('dummy mp3 content');
+      expect(await tempFile.exists(), isTrue);
+
+      final testTrack = Track(
+        id: 'temp-physical-track-1',
+        title: 'Physical Test Track',
+        artist: 'Tester',
+        duration: const Duration(minutes: 1),
+        audioUrl: tempFile.path,
+      );
+
+      final customRepo = AudioPlayerRepositoryImpl(
+        initialTracks: [testTrack, ...cubit.state.tracks],
+      );
+      final customCubit = AudioPlayerCubit(
+        audioPlayerRepository: customRepo,
+        playTrackUseCase: PlayTrackUseCase(customRepo),
+        pauseTrackUseCase: PauseTrackUseCase(customRepo),
+        resumeTrackUseCase: ResumeTrackUseCase(customRepo),
+        seekTrackUseCase: SeekTrackUseCase(customRepo),
+        nextTrackUseCase: NextTrackUseCase(customRepo),
+        previousTrackUseCase: PreviousTrackUseCase(customRepo),
+        getPlaylistsUseCase: GetPlaylistsUseCase(customRepo),
+        getTracksUseCase: GetTracksUseCase(customRepo),
+        toggleFavoriteUseCase: ToggleFavoriteUseCase(customRepo),
+        toggleSelectUseCase: ToggleSelectUseCase(customRepo),
+        removeTrackUseCase: RemoveTrackUseCase(customRepo),
+        removeTracksUseCase: RemoveTracksUseCase(customRepo),
+        setRepeatModeUseCase: SetRepeatModeUseCase(customRepo),
+        setShuffleModeUseCase: SetShuffleModeUseCase(customRepo),
+      );
+      await customCubit.loadInitialData();
+
+      expect(customCubit.state.tracks.any((t) => t.id == testTrack.id), isTrue);
+
+      // Delete with deleteFromDevice: true
+      await customCubit.removeTrack(testTrack.id, deleteFromDevice: true);
+
+      expect(
+        customCubit.state.tracks.any((t) => t.id == testTrack.id),
+        isFalse,
+      );
+      expect(await tempFile.exists(), isFalse);
+
+      await customCubit.close();
+      customRepo.dispose();
+      if (await tempDir.exists()) {
+        await tempDir.delete(recursive: true);
+      }
     });
 
     test(
@@ -138,7 +211,7 @@ void main() {
         await cubit.toggleSelect(secondTrackId);
         expect(cubit.state.selectedTrackIds.length, 2);
 
-        await cubit.removeSelectedTracks();
+        await cubit.removeSelectedTracks(deleteFromDevice: false);
 
         expect(cubit.state.tracks.length, initialCount - 2);
         expect(cubit.state.selectedTrackIds, isEmpty);
@@ -147,5 +220,70 @@ void main() {
         expect(cubit.state.tracks.any((t) => t.id == secondTrackId), isFalse);
       },
     );
+
+    test('removeSelectedTracks with deleteFromDevice: true deletes all selected physical files from storage', () async {
+      final tempDir = Directory.systemTemp.createTempSync('player_batch_test_');
+      final tempFile1 = File('${tempDir.path}/batch_track_1.mp3');
+      final tempFile2 = File('${tempDir.path}/batch_track_2.mp3');
+      await tempFile1.writeAsString('batch content 1');
+      await tempFile2.writeAsString('batch content 2');
+      expect(await tempFile1.exists(), isTrue);
+      expect(await tempFile2.exists(), isTrue);
+
+      final track1 = Track(
+        id: 'batch-track-1',
+        title: 'Batch 1',
+        artist: 'Tester',
+        duration: const Duration(minutes: 1),
+        audioUrl: tempFile1.path,
+      );
+      final track2 = Track(
+        id: 'batch-track-2',
+        title: 'Batch 2',
+        artist: 'Tester',
+        duration: const Duration(minutes: 2),
+        audioUrl: tempFile2.path,
+      );
+
+      final customRepo = AudioPlayerRepositoryImpl(
+        initialTracks: [track1, track2, ...cubit.state.tracks],
+      );
+      final customCubit = AudioPlayerCubit(
+        audioPlayerRepository: customRepo,
+        playTrackUseCase: PlayTrackUseCase(customRepo),
+        pauseTrackUseCase: PauseTrackUseCase(customRepo),
+        resumeTrackUseCase: ResumeTrackUseCase(customRepo),
+        seekTrackUseCase: SeekTrackUseCase(customRepo),
+        nextTrackUseCase: NextTrackUseCase(customRepo),
+        previousTrackUseCase: PreviousTrackUseCase(customRepo),
+        getPlaylistsUseCase: GetPlaylistsUseCase(customRepo),
+        getTracksUseCase: GetTracksUseCase(customRepo),
+        toggleFavoriteUseCase: ToggleFavoriteUseCase(customRepo),
+        toggleSelectUseCase: ToggleSelectUseCase(customRepo),
+        removeTrackUseCase: RemoveTrackUseCase(customRepo),
+        removeTracksUseCase: RemoveTracksUseCase(customRepo),
+        setRepeatModeUseCase: SetRepeatModeUseCase(customRepo),
+        setShuffleModeUseCase: SetShuffleModeUseCase(customRepo),
+      );
+      await customCubit.loadInitialData();
+
+      customCubit.toggleSelectionMode(true);
+      await customCubit.toggleSelect(track1.id);
+      await customCubit.toggleSelect(track2.id);
+      expect(customCubit.state.selectedTrackIds.length, 2);
+
+      await customCubit.removeSelectedTracks(deleteFromDevice: true);
+
+      expect(await tempFile1.exists(), isFalse);
+      expect(await tempFile2.exists(), isFalse);
+      expect(customCubit.state.tracks.any((t) => t.id == track1.id), isFalse);
+      expect(customCubit.state.tracks.any((t) => t.id == track2.id), isFalse);
+
+      await customCubit.close();
+      customRepo.dispose();
+      if (await tempDir.exists()) {
+        await tempDir.delete(recursive: true);
+      }
+    });
   });
 }

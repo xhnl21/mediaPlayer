@@ -197,6 +197,7 @@ class AudioPlayerCubit extends Cubit<AudioPlayerState> {
   StreamSubscription<Duration>? _durationSub;
   StreamSubscription<Track?>? _trackSub;
   StreamSubscription<String?>? _errorSub;
+  StreamSubscription<AudioRepeatMode>? _repeatModeSub;
 
   void _initSubscriptions() {
     _playingSub = audioPlayerRepository.isPlayingStream.listen((playing) {
@@ -220,6 +221,10 @@ class AudioPlayerCubit extends Cubit<AudioPlayerState> {
 
     _trackSub = audioPlayerRepository.currentTrackStream.listen((track) {
       emit(state.copyWith(currentTrack: track));
+    });
+
+    _repeatModeSub = audioPlayerRepository.repeatModeStream.listen((mode) {
+      emit(state.copyWith(repeatMode: mode));
     });
 
     _errorSub = audioPlayerRepository.playbackErrorStream.listen((error) {
@@ -409,8 +414,14 @@ class AudioPlayerCubit extends Cubit<AudioPlayerState> {
     emit(state.copyWith(isShuffleEnabled: newShuffle));
   }
 
-  Future<void> removeTrack(String trackId) async {
-    await removeTrackUseCase.execute(trackId);
+  Future<void> removeTrack(
+    String trackId, {
+    bool deleteFromDevice = false,
+  }) async {
+    await removeTrackUseCase.execute(
+      trackId,
+      deleteFromDevice: deleteFromDevice,
+    );
     final updatedTracks = await getTracksUseCase.execute();
     final updatedSelected = Set<String>.from(state.selectedTrackIds)
       ..remove(trackId);
@@ -428,9 +439,12 @@ class AudioPlayerCubit extends Cubit<AudioPlayerState> {
     );
   }
 
-  Future<void> removeSelectedTracks() async {
+  Future<void> removeSelectedTracks({bool deleteFromDevice = false}) async {
     if (state.selectedTrackIds.isEmpty) return;
-    await removeTracksUseCase.execute(state.selectedTrackIds.toList());
+    await removeTracksUseCase.execute(
+      state.selectedTrackIds.toList(),
+      deleteFromDevice: deleteFromDevice,
+    );
     final updatedTracks = await getTracksUseCase.execute();
     Track? current = state.currentTrack;
     if (current != null && state.selectedTrackIds.contains(current.id)) {
@@ -502,6 +516,7 @@ class AudioPlayerCubit extends Cubit<AudioPlayerState> {
     _durationSub?.cancel();
     _trackSub?.cancel();
     _errorSub?.cancel();
+    _repeatModeSub?.cancel();
     return super.close();
   }
 }

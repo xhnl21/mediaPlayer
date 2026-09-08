@@ -138,31 +138,131 @@ void main() {
       expect(find.text('No favorites yet'), findsNothing);
     });
 
-    testWidgets('Tapping delete icon shows confirmation modal dialog', (
-      tester,
-    ) async {
-      await tester.pumpWidget(createTestWidget());
-      await tester.pumpAndSettle();
+    testWidgets(
+      'Tapping delete icon shows delete options dialog and CANCEL dismisses it',
+      (tester) async {
+        await tester.pumpWidget(createTestWidget());
+        await tester.pumpAndSettle();
 
-      final deleteIcons = find.byIcon(Icons.delete_outline_rounded);
-      expect(deleteIcons, findsWidgets);
+        final deleteIcons = find.byIcon(Icons.delete_outline_rounded);
+        expect(deleteIcons, findsWidgets);
 
-      // Tap delete on first track item
-      await tester.tap(deleteIcons.first);
-      await tester.pumpAndSettle();
+        // Tap delete on first track item
+        await tester.tap(deleteIcons.first);
+        await tester.pumpAndSettle();
 
-      // Verify confirmation dialog appeared
-      expect(find.byType(AlertDialog), findsOneWidget);
-      expect(find.text('Remove Track'), findsOneWidget);
-      expect(find.text('CANCEL'), findsOneWidget);
-      expect(find.text('REMOVE'), findsOneWidget);
+        // Verify options dialog appeared
+        expect(find.byType(AlertDialog), findsOneWidget);
+        expect(find.text('Delete Track'), findsOneWidget);
+        expect(
+          find.text('Where would you like to delete this from?'),
+          findsOneWidget,
+        );
+        expect(find.text('Remove from Playlist Only'), findsOneWidget);
+        expect(find.text('Delete from Device & Playlist'), findsOneWidget);
+        expect(find.text('CANCEL'), findsOneWidget);
 
-      // Tap CANCEL
-      await tester.tap(find.text('CANCEL'));
-      await tester.pumpAndSettle();
+        // Tap CANCEL
+        await tester.tap(find.text('CANCEL'));
+        await tester.pumpAndSettle();
 
-      // Dialog dismissed
-      expect(find.byType(AlertDialog), findsNothing);
-    });
+        // Dialog dismissed
+        expect(find.byType(AlertDialog), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'Selecting "Remove from Playlist Only" removes track from memory',
+      (tester) async {
+        await tester.pumpWidget(createTestWidget());
+        await tester.pumpAndSettle();
+
+        final initialCount = playerCubit.state.tracks.length;
+        final firstTrackId = playerCubit.state.tracks.first.id;
+
+        final deleteIcons = find.byIcon(Icons.delete_outline_rounded);
+        await tester.tap(deleteIcons.first);
+        await tester.pumpAndSettle();
+
+        // Tap Remove from Playlist Only
+        await tester.tap(find.text('Remove from Playlist Only'));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(AlertDialog), findsNothing);
+        expect(playerCubit.state.tracks.length, initialCount - 1);
+        expect(
+          playerCubit.state.tracks.any((t) => t.id == firstTrackId),
+          isFalse,
+        );
+      },
+    );
+
+    testWidgets(
+      'Selecting "Delete from Device & Playlist" removes track from playlist and device',
+      (tester) async {
+        await tester.pumpWidget(createTestWidget());
+        await tester.pumpAndSettle();
+
+        final initialCount = playerCubit.state.tracks.length;
+        final firstTrackId = playerCubit.state.tracks.first.id;
+
+        final deleteIcons = find.byIcon(Icons.delete_outline_rounded);
+        await tester.tap(deleteIcons.first);
+        await tester.pumpAndSettle();
+
+        // Tap Delete from Device & Playlist
+        await tester.tap(find.text('Delete from Device & Playlist'));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(AlertDialog), findsNothing);
+        expect(playerCubit.state.tracks.length, initialCount - 1);
+        expect(
+          playerCubit.state.tracks.any((t) => t.id == firstTrackId),
+          isFalse,
+        );
+      },
+    );
+
+    testWidgets(
+      'Batch delete displays options dialog and removes selected tracks',
+      (tester) async {
+        await tester.pumpWidget(createTestWidget());
+        await tester.pumpAndSettle();
+
+        final initialCount = playerCubit.state.tracks.length;
+        final firstId = playerCubit.state.tracks[0].id;
+        final secondId = playerCubit.state.tracks[1].id;
+
+        // Activate selection mode and select 2 tracks
+        playerCubit.toggleSelectionMode(true);
+        await playerCubit.toggleSelect(firstId);
+        await playerCubit.toggleSelect(secondId);
+        await tester.pumpAndSettle();
+
+        // Expect Delete (2) button in AppBar
+        final batchDeleteButton = find.text('Delete (2)');
+        expect(batchDeleteButton, findsOneWidget);
+
+        await tester.tap(batchDeleteButton);
+        await tester.pumpAndSettle();
+
+        // Verify batch dialog options
+        expect(find.byType(AlertDialog), findsOneWidget);
+        expect(find.text('Delete Multiple Tracks'), findsOneWidget);
+        expect(find.text('2 tracks selected'), findsOneWidget);
+        expect(find.text('Remove from Playlist Only'), findsOneWidget);
+        expect(find.text('Delete from Device & Playlist'), findsOneWidget);
+
+        // Tap Delete from Device & Playlist
+        await tester.tap(find.text('Delete from Device & Playlist'));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(AlertDialog), findsNothing);
+        expect(playerCubit.state.tracks.length, initialCount - 2);
+        expect(playerCubit.state.tracks.any((t) => t.id == firstId), isFalse);
+        expect(playerCubit.state.tracks.any((t) => t.id == secondId), isFalse);
+        expect(playerCubit.state.isSelectionMode, isFalse);
+      },
+    );
   });
 }
