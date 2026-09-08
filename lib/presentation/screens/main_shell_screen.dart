@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:media_player/core/core.dart';
 import 'package:media_player/presentation/cubits.dart';
 import 'package:media_player/presentation/screens.dart';
+import 'package:media_player/presentation/utils/responsive_extensions.dart';
 import 'package:media_player/presentation/widgets.dart';
 
 class MainShellScreen extends StatelessWidget {
@@ -31,10 +32,10 @@ class MainShellScreen extends StatelessWidget {
                   backgroundColor: AppColors.background,
                   elevation: 0,
                   leading: IconButton(
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.arrow_back_ios_new_rounded,
                       color: AppColors.textLight,
-                      size: 20,
+                      size: context.iconSize(20),
                     ),
                     onPressed: () {
                       if (navState.currentScreen == AppScreen.auth) {

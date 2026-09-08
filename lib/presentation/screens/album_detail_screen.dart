@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:media_player/core/core.dart';
 import 'package:media_player/presentation/cubits.dart';
+import 'package:media_player/presentation/utils/responsive_extensions.dart';
 import 'package:media_player/presentation/widgets.dart';
 
 class AlbumDetailScreen extends StatelessWidget {
@@ -9,19 +10,28 @@ class AlbumDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final horizontalPadding = context.w(0.06).clamp(16.0, 32.0);
+    final verticalPadding = context.h(0.02).clamp(12.0, 24.0);
+    final cardPadding = context.w(0.04).clamp(12.0, 20.0);
+    final albumArtSize = context.w(0.18).clamp(60.0, 96.0);
+    final btnWidth = context.w(0.46).clamp(140.0, 240.0);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+          padding: EdgeInsets.symmetric(
+            horizontal: horizontalPadding,
+            vertical: verticalPadding,
+          ),
           child: Column(
             children: [
               // Top White Card with Album Art and Metadata
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(cardPadding),
                 decoration: BoxDecoration(
                   color: AppColors.textLight,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(context.w(0.04).clamp(12.0, 20.0)),
                   boxShadow: const [
                     BoxShadow(
                       color: AppColors.shadow,
@@ -34,21 +44,21 @@ class AlbumDetailScreen extends StatelessWidget {
                   children: [
                     // Album Square with Star
                     Container(
-                      width: 72,
-                      height: 72,
+                      width: albumArtSize,
+                      height: albumArtSize,
                       decoration: BoxDecoration(
                         color: AppColors.cardSurface,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(albumArtSize * 0.16),
                       ),
-                      child: const Center(
+                      child: Center(
                         child: Icon(
                           Icons.star_rounded,
                           color: AppColors.textLight,
-                          size: 42,
+                          size: albumArtSize * 0.58,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    SizedBox(width: context.w(0.04).clamp(10.0, 20.0)),
                     // Title and info
                     Expanded(
                       child: Column(
@@ -59,13 +69,15 @@ class AlbumDetailScreen extends StatelessWidget {
                             style: AppTypography.titleLarge.copyWith(
                               color: AppColors.textDark,
                               fontWeight: FontWeight.bold,
+                              fontSize: context.sp(18),
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: context.h(0.005).clamp(2.0, 6.0)),
                           Text(
                             'March 1 at 09:00\n150 songs\n755 minutes',
                             style: AppTypography.bodySmall.copyWith(
                               color: AppColors.textDark.withValues(alpha: 0.7),
+                              fontSize: context.sp(11),
                               height: 1.3,
                             ),
                           ),
@@ -78,8 +90,10 @@ class AlbumDetailScreen extends StatelessWidget {
 
               // Coral highlight bar under card
               Container(
-                height: 5,
-                margin: const EdgeInsets.symmetric(horizontal: 12),
+                height: context.h(0.006).clamp(4.0, 7.0),
+                margin: EdgeInsets.symmetric(
+                  horizontal: context.w(0.03).clamp(8.0, 16.0),
+                ),
                 decoration: const BoxDecoration(
                   color: AppColors.accentCoral,
                   borderRadius: BorderRadius.vertical(
@@ -87,55 +101,62 @@ class AlbumDetailScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 28),
+              SizedBox(height: context.h(0.03).clamp(16.0, 32.0)),
 
               // Rating Stars (5 stars)
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(5, (index) {
                   return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: context.w(0.01).clamp(2.0, 6.0),
+                    ),
                     child: Icon(
                       index < 4
                           ? Icons.star_rounded
                           : Icons.star_border_rounded,
                       color: AppColors.textLight,
-                      size: 28,
+                      size: context.iconSize(28),
                     ),
                   );
                 }),
               ),
-              const SizedBox(height: 28),
+              SizedBox(height: context.h(0.03).clamp(16.0, 32.0)),
 
               // Bio / Description text
               Text(
                 'Lorem ipsum',
                 style: AppTypography.titleMedium.copyWith(
                   fontWeight: FontWeight.bold,
+                  fontSize: context.sp(16),
                 ),
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: context.h(0.012).clamp(6.0, 14.0)),
               Text(
                 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.',
                 style: AppTypography.bodySmall.copyWith(
                   color: AppColors.textLight.withValues(alpha: 0.9),
+                  fontSize: context.sp(12),
                   height: 1.6,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 36),
+              SizedBox(height: context.h(0.04).clamp(20.0, 42.0)),
 
               // Action button "LOREM"
               CommonCoralButton(
                 text: 'LOREM',
-                width: 180,
+                width: btnWidth,
                 onPressed: () {
                   final tracks = context.read<AudioPlayerCubit>().state.tracks;
                   if (tracks.isNotEmpty) {
                     context.read<AudioPlayerCubit>().playTrack(tracks.first);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Playing Album: Lorem ipsum'),
+                      SnackBar(
+                        content: Text(
+                          'Playing Album: Lorem ipsum',
+                          style: TextStyle(fontSize: context.sp(13)),
+                        ),
                         backgroundColor: AppColors.cardSurfaceLight,
                       ),
                     );

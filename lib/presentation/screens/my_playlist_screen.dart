@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:media_player/core/core.dart';
 import 'package:media_player/presentation/cubits.dart';
+import 'package:media_player/presentation/utils/responsive_extensions.dart';
 import 'package:media_player/presentation/widgets.dart';
 
 class MyPlaylistScreen extends StatelessWidget {
@@ -9,6 +10,14 @@ class MyPlaylistScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final horizontalPadding = context.w(0.04).clamp(12.0, 24.0);
+    final cardPadding = context.w(0.04).clamp(12.0, 20.0);
+    final starSize = context.w(0.14).clamp(44.0, 64.0);
+    final btnWidth = context.w(0.20).clamp(68.0, 92.0);
+    final btnHeight = context.h(0.038).clamp(28.0, 36.0);
+    final rowHeight = context.h(0.062).clamp(46.0, 58.0);
+    final checkCircleSize = context.iconSize(24);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -16,12 +25,12 @@ class MyPlaylistScreen extends StatelessWidget {
           children: [
             // Top Featured Playlist Card
             Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: EdgeInsets.all(horizontalPadding),
               child: Container(
-                padding: const EdgeInsets.all(16.0),
+                padding: EdgeInsets.all(cardPadding),
                 decoration: BoxDecoration(
                   color: AppColors.cardSurface,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(context.w(0.05).clamp(14.0, 22.0)),
                 ),
                 child: Column(
                   children: [
@@ -30,19 +39,19 @@ class MyPlaylistScreen extends StatelessWidget {
                       children: [
                         // Red/Coral circle with white star
                         Container(
-                          width: 56,
-                          height: 56,
+                          width: starSize,
+                          height: starSize,
                           decoration: const BoxDecoration(
                             shape: BoxShape.circle,
                             color: AppColors.accentCoral,
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.star_rounded,
                             color: AppColors.textLight,
-                            size: 36,
+                            size: starSize * 0.64,
                           ),
                         ),
-                        const SizedBox(width: 14),
+                        SizedBox(width: context.w(0.035).clamp(8.0, 16.0)),
                         // Playlist Info
                         Expanded(
                           child: Column(
@@ -51,15 +60,16 @@ class MyPlaylistScreen extends StatelessWidget {
                               Text(
                                 'My Playlist',
                                 style: AppTypography.titleLarge.copyWith(
-                                  fontSize: 19,
+                                  fontSize: context.sp(19),
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              const SizedBox(height: 4),
+                              SizedBox(height: context.h(0.005).clamp(2.0, 6.0)),
                               Text(
                                 'March 1 at 20:00\n100 songs / 155 minutes',
                                 style: AppTypography.bodySmall.copyWith(
                                   color: AppColors.textSecondary,
+                                  fontSize: context.sp(11),
                                   height: 1.3,
                                 ),
                               ),
@@ -71,8 +81,8 @@ class MyPlaylistScreen extends StatelessWidget {
                           children: [
                             CommonCoralButton(
                               text: 'LISTEN',
-                              width: 76,
-                              height: 30,
+                              width: btnWidth,
+                              height: btnHeight,
                               onPressed: () {
                                 final tracks = context
                                     .read<AudioPlayerCubit>()
@@ -85,11 +95,11 @@ class MyPlaylistScreen extends StatelessWidget {
                                 }
                               },
                             ),
-                            const SizedBox(height: 6),
+                            SizedBox(height: context.h(0.008).clamp(4.0, 8.0)),
                             CommonCoralButton(
                               text: 'PLUS',
-                              width: 76,
-                              height: 30,
+                              width: btnWidth,
+                              height: btnHeight,
                               isOutlined: true,
                               onPressed: () {
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -113,7 +123,9 @@ class MyPlaylistScreen extends StatelessWidget {
             BlocBuilder<LibraryCubit, LibraryState>(
               builder: (context, state) {
                 return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: context.w(0.05).clamp(14.0, 24.0),
+                  ),
                   child: Row(
                     children: [
                       _buildTab(
@@ -121,7 +133,7 @@ class MyPlaylistScreen extends StatelessWidget {
                         title: 'Lorem ipsum',
                         isSelected: state.selectedTab == 'Lorem ipsum',
                       ),
-                      const SizedBox(width: 24),
+                      SizedBox(width: context.w(0.06).clamp(16.0, 32.0)),
                       _buildTab(
                         context,
                         title: 'Lorem dolor',
@@ -132,27 +144,33 @@ class MyPlaylistScreen extends StatelessWidget {
                 );
               },
             ),
-            const Divider(color: AppColors.divider, height: 16),
+            Divider(
+              color: AppColors.divider,
+              height: context.h(0.02).clamp(10.0, 20.0),
+            ),
 
             // Track list
             Expanded(
               child: BlocBuilder<AudioPlayerCubit, AudioPlayerState>(
                 builder: (context, state) {
                   return ListView.separated(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16.0,
-                      vertical: 6.0,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: horizontalPadding,
+                      vertical: context.h(0.008).clamp(4.0, 10.0),
                     ),
                     itemCount: state.tracks.length,
-                    separatorBuilder: (_, index) => const SizedBox(height: 8),
+                    separatorBuilder: (_, index) =>
+                        SizedBox(height: context.h(0.01).clamp(6.0, 12.0)),
                     itemBuilder: (context, index) {
                       final track = state.tracks[index];
                       return Container(
-                        height: 50,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        height: rowHeight,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: context.w(0.03).clamp(8.0, 16.0),
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.cardSurface.withValues(alpha: 0.6),
-                          borderRadius: BorderRadius.circular(25),
+                          borderRadius: BorderRadius.circular(rowHeight / 2),
                         ),
                         child: Row(
                           children: [
@@ -161,28 +179,29 @@ class MyPlaylistScreen extends StatelessWidget {
                                   .read<AudioPlayerCubit>()
                                   .toggleSelect(track.id),
                               child: Container(
-                                width: 24,
-                                height: 24,
+                                width: checkCircleSize,
+                                height: checkCircleSize,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   color: track.isSelected
                                       ? AppColors.textLight
                                       : Colors.transparent,
+                                  // Justified exception: 1.5 circle stroke
                                   border: Border.all(
                                     color: AppColors.textLight,
                                     width: 1.5,
                                   ),
                                 ),
                                 child: track.isSelected
-                                    ? const Icon(
+                                    ? Icon(
                                         Icons.check,
-                                        size: 15,
+                                        size: context.iconSize(15),
                                         color: AppColors.primaryTealDark,
                                       )
                                     : null,
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            SizedBox(width: context.w(0.03).clamp(8.0, 16.0)),
                             Expanded(
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -191,23 +210,23 @@ class MyPlaylistScreen extends StatelessWidget {
                                   Text(
                                     track.title,
                                     style: AppTypography.titleMedium.copyWith(
-                                      fontSize: 13,
+                                      fontSize: context.sp(13),
                                     ),
                                   ),
                                   Text(
                                     track.artist,
                                     style: AppTypography.bodySmall.copyWith(
-                                      fontSize: 11,
+                                      fontSize: context.sp(11),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
                             IconButton(
-                              icon: const Icon(
+                              icon: Icon(
                                 Icons.shopping_cart_outlined,
                                 color: AppColors.textLight,
-                                size: 19,
+                                size: context.iconSize(19),
                               ),
                               onPressed: () {},
                             ),
@@ -241,13 +260,18 @@ class MyPlaylistScreen extends StatelessWidget {
               color: isSelected
                   ? AppColors.textLight
                   : AppColors.textSecondary.withValues(alpha: 0.6),
-              fontSize: 14,
+              fontSize: context.sp(14),
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             ),
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: context.h(0.005).clamp(2.0, 6.0)),
           if (isSelected)
-            Container(height: 2, width: 32, color: AppColors.accentCoral),
+            // Justified exception: 2px tab underline indicator
+            Container(
+              height: 2,
+              width: context.w(0.08).clamp(24.0, 40.0),
+              color: AppColors.accentCoral,
+            ),
         ],
       ),
     );

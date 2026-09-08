@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:media_player/core/core.dart';
 import 'package:media_player/presentation/cubits.dart';
+import 'package:media_player/presentation/utils/responsive_extensions.dart';
 
 class DashboardGridScreen extends StatelessWidget {
   const DashboardGridScreen({super.key});
@@ -51,23 +52,33 @@ class DashboardGridScreen extends StatelessWidget {
       ),
     ];
 
+    final horizontalPadding = context.w(0.05).clamp(14.0, 28.0);
+    final verticalPadding = context.h(0.015).clamp(8.0, 18.0);
+    final gridSpacing = context.w(0.04).clamp(12.0, 20.0);
+    final crossCount = (context.isTablet || context.isLandscape) ? 4 : 2;
+    final aspectRatio = context.isLandscape ? 1.35 : (context.isTablet ? 1.25 : 1.15);
+    final cardRadius = context.w(0.04).clamp(12.0, 20.0);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+          padding: EdgeInsets.symmetric(
+            horizontal: horizontalPadding,
+            vertical: verticalPadding,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 8),
+              SizedBox(height: context.h(0.01).clamp(4.0, 12.0)),
               Expanded(
                 child: GridView.builder(
                   physics: const BouncingScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    childAspectRatio: 1.15,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossCount,
+                    crossAxisSpacing: gridSpacing,
+                    mainAxisSpacing: gridSpacing,
+                    childAspectRatio: aspectRatio,
                   ),
                   itemCount: categories.length,
                   itemBuilder: (context, index) {
@@ -76,11 +87,11 @@ class DashboardGridScreen extends StatelessWidget {
                       onTap: () {
                         context.read<NavigationCubit>().navigateTo(item.screen);
                       },
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(cardRadius),
                       child: Container(
                         decoration: BoxDecoration(
                           color: AppColors.cardSurfaceLight,
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(cardRadius),
                           boxShadow: const [
                             BoxShadow(
                               color: AppColors.shadow,
@@ -94,15 +105,15 @@ class DashboardGridScreen extends StatelessWidget {
                           children: [
                             Icon(
                               item.icon,
-                              size: 42,
+                              size: context.iconSize(42),
                               color: AppColors.textLight,
                             ),
-                            const SizedBox(height: 10),
+                            SizedBox(height: context.h(0.012).clamp(6.0, 12.0)),
                             Text(
                               item.label,
                               style: AppTypography.titleMedium.copyWith(
                                 color: AppColors.textLight,
-                                fontSize: 13,
+                                fontSize: context.sp(13),
                               ),
                             ),
                           ],
