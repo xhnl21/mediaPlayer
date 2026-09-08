@@ -1,0 +1,159 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "MediaPlayer (Android - dev - test)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "flutterMode": "debug",
+      "args": [
+        "--flavor",
+        "dev",
+        "--dart-define-from-file",
+        ".env.test"
+      ]
+    },
+    {
+      "name": "MediaPlayer (Android - dev - debug)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "flutterMode": "debug",
+      "args": [
+        "--flavor",
+        "dev",
+        "--dart-define-from-file",
+        ".env.dev"
+      ]
+    },
+    {
+      "name": "MediaPlayer (Android - prod - debug)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "flutterMode": "debug",
+      "args": [
+        "--flavor",
+        "prod",
+        "--dart-define-from-file",
+        ".env"
+      ]
+    },
+    {
+      "name": "MediaPlayer (Android - prod - release)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "flutterMode": "release",
+      "args": [
+        "--flavor",
+        "prod",
+        "--dart-define-from-file",
+        ".env"
+      ]
+    },
+    {
+      "name": "MediaPlayer (iOS - dev - test)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "flutterMode": "debug",
+      "args": [
+        "--flavor",
+        "dev",
+        "--dart-define-from-file",
+        ".env.test"
+      ]
+    },
+    {
+      "name": "MediaPlayer (iOS - dev - debug)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "flutterMode": "debug",
+      "args": [
+        "--flavor",
+        "dev",
+        "--dart-define-from-file",
+        ".env.dev"
+      ]
+    },
+    {
+      "name": "MediaPlayer (iOS - prod - debug)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "flutterMode": "debug",
+      "args": [
+        "--flavor",
+        "prod",
+        "--dart-define-from-file",
+        ".env"
+      ]
+    },
+    {
+      "name": "MediaPlayer (iOS - prod - profile)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "flutterMode": "profile",
+      "args": [
+        "--flavor",
+        "prod",
+        "--dart-define-from-file",
+        ".env"
+      ]
+    },
+    {
+      "name": "MediaPlayer (iOS - prod - release)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "flutterMode": "release",
+      "args": [
+        "--flavor",
+        "prod",
+        "--dart-define-from-file",
+        ".env"
+      ]
+    },
+    {
+      "name": "MediaPlayer (Android - prod - release - apk - obfuscate)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "flutterMode": "release",
+      "args": [
+        "--flavor",
+        "prod",
+        "--dart-define-from-file",
+        ".env",
+        "--obfuscate",
+        "--split-debug-info=build/app/outputs/symbols"
+      ]
+    },
+    {
+      "name": "MediaPlayer (Android - prod - release - appbundle - obfuscate)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "flutterMode": "release",
+      "args": [
+        "--flavor",
+        "prod",
+        "--dart-define-from-file",
+        ".env",
+        "--obfuscate",
+        "--split-debug-info=build/app/outputs/symbols"
+      ]
+    },
+    {
+      "name": "MediaPlayer (Default - Debug)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "flutterMode": "debug"
+    }
+  ]
+}

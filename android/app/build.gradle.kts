@@ -27,6 +27,21 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["appName"] = "MediaPlayer"
+    }
+
+    flavorDimensions += "default"
+    productFlavors {
+        create("dev") {
+            dimension = "default"
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+            manifestPlaceholders["appName"] = "MediaPlayer Dev"
+        }
+        create("prod") {
+            dimension = "default"
+            manifestPlaceholders["appName"] = "MediaPlayer"
+        }
     }
 
     buildTypes {

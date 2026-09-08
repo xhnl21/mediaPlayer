@@ -1,3 +1,4 @@
+export 'config/app_environment.dart';
 export 'constants/app_colors.dart';
 export 'constants/app_typography.dart';
 export 'di/injection_container.dart';
