@@ -181,3 +181,35 @@ En estricto cumplimiento de [.agents/barriles.md](file:///Users/programacion/Doc
      - Valida recursivamente que ningún archivo en `lib/presentation/`, `lib/domain/` o `lib/application/` contenga imports de `infrastructure`.
      - Valida que `lib/infrastructure/infrastructure.dart` solo sea importado de forma exclusiva por `lib/core/di/injection_container.dart`.
 
+---
+
+## 7. Enrutamiento Declarativo y Deep Linking Centralizado (GoRouter)
+
+En estricto cumplimiento de [.agents/goRoute.md](file:///Users/programacion/Documents/mediaPlayer/.agents/goRoute.md), se ha migrado el sistema de navegación a una arquitectura declarativa, segura y centralizada con `go_router`:
+
+### Principios y Componentes
+
+1. **Constantes Centralizadas de Rutas (`lib/presentation/router/route_names.dart`)**:
+   - Centraliza todas las rutas como constantes inmutables (`welcome`, `auth`, `dashboard`, `search`, `tracks`, `myPlaylist`, `album`, `radio`, `equalizer`, `recorder`, `settings`, `profile`).
+   - Evita "magic strings" y desacopla la definición de la URL de las pantallas consumidoras.
+
+2. **Configuración de Enrutador (`lib/presentation/router/app_router.dart`)**:
+   - `AppRouter.createRouter(authCubit)`: Fabrica la instancia singleton de `GoRouter` vinculada reactivamente a los cambios de estado de `AuthCubit` mediante `GoRouterRefreshStream`.
+   - **Auth Guards (`redirect`)**:
+     - Usuarios no autenticados que intentan acceder a rutas protegidas (`/dashboard`, `/equalizer`, `/radio`, etc.) son redirigidos automáticamente a `/welcome`.
+     - Usuarios autenticados que intentan acceder a rutas públicas de autenticación (`/welcome`, `/auth`) son redirigidos automáticamente a `/dashboard`.
+   - **Rutas Anidadas con `ShellRoute`**:
+     - Las rutas de contenido protegido se renderizan dentro de `ShellRoute` alojando a `MainShellScreen`.
+     - Proporciona persistencia de la barra de navegación inferior (`CustomBottomNavBar`), barra superior adaptativa y espacio para el mini reproductor.
+   - **Manejo de Errores 404 (`_NotFoundScreen`)**:
+     - Intercepta cualquier URL desconocida o deep link no registrado mostrando una interfaz estilizada con botón para retornar a la ruta de inicio.
+
+3. **Compatibilidad Bidireccional con BLoC (`NavigationCubit`)**:
+   - Los eventos de cambio de pantalla en `NavigationCubit` despachan comandos declarativos `AppRouter.router.go(routePath)`.
+   - A su vez, `MainShellScreen` calcula el índice de la barra inferior reactivamente a partir de `GoRouterState.of(context).matchedLocation`, garantizando sincronía perfecta entre URL y UI.
+
+4. **Soporte de Deep Linking**:
+   - **Android**: `AndroidManifest.xml` configurado con filtro de intención `<intent-filter>` para el esquema `mediaplayer://app`.
+   - **iOS**: `Info.plist` configurado con `CFBundleURLTypes` y esquema `mediaplayer`.
+   - Permite invocar pantallas directamente desde enlaces externos (por ejemplo: `mediaplayer://app/equalizer`).
+

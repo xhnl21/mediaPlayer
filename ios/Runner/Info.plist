@@ -68,5 +68,18 @@
 	</array>
 	<key>NSAppleMusicUsageDescription</key>
 	<string>Media Player requires access to your music library to scan and play local audio tracks.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.antigravity.mediaplayer</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>mediaplayer</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:media_player/core/core.dart';
 import 'package:media_player/presentation/cubits.dart';
+import 'package:media_player/presentation/router/route_names.dart';
 import 'package:media_player/presentation/utils/responsive_extensions.dart';
 import 'package:media_player/presentation/widgets.dart';
 
@@ -68,6 +70,7 @@ class WelcomeScreen extends StatelessWidget {
                           CommonCoralButton(
                             text: 'GET STARTED',
                             onPressed: () {
+                              context.go(RouteNames.auth);
                               context.read<NavigationCubit>().navigateTo(
                                 AppScreen.auth,
                               );
@@ -76,6 +79,8 @@ class WelcomeScreen extends StatelessWidget {
                           SizedBox(height: context.h(0.018).clamp(10.0, 20.0)),
                           GestureDetector(
                             onTap: () {
+                              context.read<AuthCubit>().continueAsGuest();
+                              context.go(RouteNames.dashboard);
                               context.read<NavigationCubit>().navigateTo(
                                 AppScreen.dashboardGrid,
                               );

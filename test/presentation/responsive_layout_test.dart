@@ -61,7 +61,13 @@ void main() {
         expect(tester.takeException(), isNull);
         expect(find.text('Confirm password'), findsOneWidget);
 
-        // 3. Dashboard Screen
+        // 3. Dashboard Screen (Authenticate guest for protected screens)
+        await tester
+            .element(find.byType(MaterialApp))
+            .read<AuthCubit>()
+            .continueAsGuest();
+        await tester.pumpAndSettle();
+
         navCubit.navigateTo(AppScreen.dashboardGrid);
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);

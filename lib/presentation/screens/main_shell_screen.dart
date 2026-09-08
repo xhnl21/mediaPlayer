@@ -1,29 +1,54 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:media_player/core/core.dart';
 import 'package:media_player/presentation/cubits.dart';
+import 'package:media_player/presentation/router/route_names.dart';
 import 'package:media_player/presentation/screens.dart';
 import 'package:media_player/presentation/utils/responsive_extensions.dart';
 import 'package:media_player/presentation/widgets.dart';
 
 class MainShellScreen extends StatelessWidget {
-  const MainShellScreen({super.key});
+  const MainShellScreen({super.key, this.child});
+
+  final Widget? child;
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<NavigationCubit, NavigationState>(
       builder: (context, navState) {
-        final showBottomNav =
-            navState.currentScreen != AppScreen.welcome &&
-            navState.currentScreen != AppScreen.auth;
+        String location = '';
+        try {
+          location = GoRouterState.of(context).matchedLocation;
+        } catch (_) {}
+
+        final isWelcomeOrAuth =
+            location == RouteNames.welcome ||
+            location == RouteNames.auth ||
+            (child == null &&
+                (navState.currentScreen == AppScreen.welcome ||
+                    navState.currentScreen == AppScreen.auth));
+
+        final showBottomNav = !isWelcomeOrAuth;
 
         final canGoBack =
-            navState.currentScreen == AppScreen.myPlaylist ||
-            navState.currentScreen == AppScreen.albumDetail ||
-            navState.currentScreen == AppScreen.radioFm ||
-            navState.currentScreen == AppScreen.voiceRecorder ||
-            navState.currentScreen == AppScreen.soundSettings ||
-            navState.currentScreen == AppScreen.auth;
+            location == RouteNames.myPlaylist ||
+            location == RouteNames.album ||
+            location == RouteNames.radio ||
+            location == RouteNames.recorder ||
+            location == RouteNames.settings ||
+            (child == null &&
+                (navState.currentScreen == AppScreen.myPlaylist ||
+                    navState.currentScreen == AppScreen.albumDetail ||
+                    navState.currentScreen == AppScreen.radioFm ||
+                    navState.currentScreen == AppScreen.voiceRecorder ||
+                    navState.currentScreen == AppScreen.soundSettings ||
+                    navState.currentScreen == AppScreen.auth));
+
+        final bottomNavIndex = _calculateNavIndex(
+          location,
+          navState.bottomNavIndex,
+        );
 
         return Scaffold(
           backgroundColor: AppColors.background,
@@ -38,31 +63,66 @@ class MainShellScreen extends StatelessWidget {
                       size: context.iconSize(20),
                     ),
                     onPressed: () {
-                      if (navState.currentScreen == AppScreen.auth) {
-                        context.read<NavigationCubit>().navigateTo(
-                          AppScreen.welcome,
-                        );
+                      if (context.canPop()) {
+                        context.pop();
                       } else {
-                        context.read<NavigationCubit>().navigateTo(
-                          AppScreen.dashboardGrid,
-                        );
+                        context.go(RouteNames.dashboard);
                       }
+                      context.read<NavigationCubit>().navigateTo(
+                        AppScreen.dashboardGrid,
+                      );
                     },
                   ),
                 )
               : null,
-          body: _buildCurrentScreen(navState.currentScreen),
+          body: child ?? _buildCurrentScreen(navState.currentScreen),
           bottomNavigationBar: showBottomNav
               ? CustomBottomNavBar(
-                  selectedIndex: navState.bottomNavIndex,
+                  selectedIndex: bottomNavIndex,
                   onItemSelected: (index) {
-                    context.read<NavigationCubit>().changeBottomNavIndex(index);
+                    _onBottomNavTapped(context, index);
                   },
                 )
               : null,
         );
       },
     );
+  }
+
+  int _calculateNavIndex(String location, int fallbackIndex) {
+    if (location.startsWith(RouteNames.dashboard)) return 0;
+    if (location.startsWith(RouteNames.search)) return 1;
+    if (location.startsWith(RouteNames.tracks) ||
+        location.startsWith(RouteNames.myPlaylist) ||
+        location.startsWith(RouteNames.album)) {
+      return 2;
+    }
+    if (location.startsWith(RouteNames.equalizer) ||
+        location.startsWith(RouteNames.radio) ||
+        location.startsWith(RouteNames.recorder)) {
+      return 3;
+    }
+    if (location.startsWith(RouteNames.profile) ||
+        location.startsWith(RouteNames.settings)) {
+      return 4;
+    }
+    return fallbackIndex;
+  }
+
+  void _onBottomNavTapped(BuildContext context, int index) {
+    context.read<NavigationCubit>().changeBottomNavIndex(index);
+    switch (index) {
+      case 0:
+        context.go(RouteNames.dashboard);
+      case 1:
+        context.go(RouteNames.search);
+      case 2:
+        context.go(RouteNames.tracks);
+      case 3:
+        context.go(RouteNames.equalizer);
+      case 4:
+        context.go(RouteNames.profile);
+    }
   }
 
   Widget _buildCurrentScreen(AppScreen screen) {

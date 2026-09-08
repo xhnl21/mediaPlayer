@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:media_player/core/core.dart';
 import 'package:media_player/presentation/cubits.dart';
 import 'package:media_player/presentation/utils/responsive_extensions.dart';
@@ -87,6 +88,7 @@ class DashboardGridScreen extends StatelessWidget {
                     final item = categories[index];
                     return InkWell(
                       onTap: () {
+                        context.go(item.screen.routePath);
                         context.read<NavigationCubit>().navigateTo(item.screen);
                       },
                       borderRadius: BorderRadius.circular(cardRadius),

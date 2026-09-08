@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:media_player/core/core.dart';
 import 'package:media_player/presentation/cubits.dart';
+import 'package:media_player/presentation/router/route_names.dart';
 import 'package:media_player/presentation/utils/responsive_extensions.dart';
 import 'package:media_player/presentation/widgets.dart';
 
@@ -30,7 +32,8 @@ class _AuthView extends StatelessWidget {
     return BlocListener<AuthCubit, AuthState>(
       listener: (context, state) {
         if (state is Authenticated) {
-          context.read<NavigationCubit>().navigateTo(AppScreen.profile);
+          context.go(RouteNames.dashboard);
+          context.read<NavigationCubit>().navigateTo(AppScreen.dashboardGrid);
         } else if (state is AuthError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -45,6 +48,21 @@ class _AuthView extends StatelessWidget {
       },
       child: Scaffold(
         backgroundColor: AppColors.background,
+        appBar: AppBar(
+          backgroundColor: AppColors.background,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: AppColors.textLight,
+              size: context.iconSize(20),
+            ),
+            onPressed: () {
+              context.go(RouteNames.welcome);
+              context.read<NavigationCubit>().navigateTo(AppScreen.welcome);
+            },
+          ),
+        ),
         body: SafeArea(
           child: SingleChildScrollView(
             padding: EdgeInsets.symmetric(

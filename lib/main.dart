@@ -89,20 +89,25 @@ class MediaPlayerApp extends StatelessWidget {
           ),
         ),
       ],
-      child: MaterialApp(
-        title: 'Media Player',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          useMaterial3: true,
-          scaffoldBackgroundColor: AppColors.background,
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: AppColors.primaryTeal,
-            primary: AppColors.primaryTeal,
-            secondary: AppColors.accentCoral,
-            surface: AppColors.cardSurface,
-          ),
-        ),
-        home: const MainShellScreen(),
+      child: Builder(
+        builder: (context) {
+          final router = AppRouter.createRouter(context.read<AuthCubit>());
+          return MaterialApp.router(
+            title: 'Media Player',
+            debugShowCheckedModeBanner: false,
+            routerConfig: router,
+            theme: ThemeData(
+              useMaterial3: true,
+              scaffoldBackgroundColor: AppColors.background,
+              colorScheme: ColorScheme.fromSeed(
+                seedColor: AppColors.primaryTeal,
+                primary: AppColors.primaryTeal,
+                secondary: AppColors.accentCoral,
+                surface: AppColors.cardSurface,
+              ),
+            ),
+          );
+        },
       ),
     );
   }
