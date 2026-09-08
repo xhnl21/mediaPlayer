@@ -1,0 +1,22 @@
+#!/bin/sh
+
+echo "🔍 Ejecutando verificaciones de Dart/Flutter antes del commit..."
+
+# 1. Formatear código con dart format (falla si algún archivo cambió o necesita formato)
+echo "Ejecutando: dart format --output=none --set-exit-if-changed ."
+dart format --output=none --set-exit-if-changed .
+if [ $? -ne 0 ]; then
+  echo "❌ Error de formato en código Dart. Ejecuta 'dart format .' y vuelve a intentar el commit."
+  exit 1
+fi
+
+# 2. Análisis estático con flutter analyze
+echo "Ejecutando: flutter analyze"
+flutter analyze
+if [ $? -ne 0 ]; then
+  echo "❌ Se encontraron errores en flutter analyze. Corrige los problemas y vuelve a intentar el commit."
+  exit 1
+fi
+
+echo "✅ Verificaciones superadas. Commit permitido."
+exit 0
