@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
@@ -344,7 +343,7 @@ class AudioPlayerRepositoryImpl implements AudioPlayerRepository {
     final track = _tracks[trackIndex];
 
     if (deleteFromDevice) {
-      await _deletePhysicalFile(track.audioUrl);
+      await _deletePhysicalFile(audioUrl: track.audioUrl, trackId: track.id);
     }
 
     final isDeletingCurrent = _currentTrack?.id == trackId;
@@ -372,7 +371,7 @@ class AudioPlayerRepositoryImpl implements AudioPlayerRepository {
 
     if (deleteFromDevice) {
       for (final t in tracksToDelete) {
-        await _deletePhysicalFile(t.audioUrl);
+        await _deletePhysicalFile(audioUrl: t.audioUrl, trackId: t.id);
       }
     }
 
@@ -392,7 +391,10 @@ class AudioPlayerRepositoryImpl implements AudioPlayerRepository {
     }
   }
 
-  Future<void> _deletePhysicalFile(String audioUrl) async {
+  Future<void> _deletePhysicalFile({
+    required String audioUrl,
+    required String trackId,
+  }) async {
     if (audioUrl.isEmpty) return;
     if (audioUrl.startsWith('http://') ||
         audioUrl.startsWith('https://') ||
@@ -400,10 +402,10 @@ class AudioPlayerRepositoryImpl implements AudioPlayerRepository {
       return;
     }
     try {
-      final file = File(audioUrl);
-      if (await file.exists()) {
-        await file.delete();
-      }
+      await _localAudioDataSource.deletePhysicalTrack(
+        audioUrl: audioUrl,
+        trackId: trackId,
+      );
     } catch (e) {
       debugPrint('AudioPlayerRepositoryImpl._deletePhysicalFile exception: $e');
       _playbackErrorController.add('Could not delete physical audio file: $e');

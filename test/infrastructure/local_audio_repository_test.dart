@@ -23,6 +23,17 @@ class MockLocalAudioDataSource implements LocalAudioDataSource {
 
   @override
   Future<List<Track>> queryTracks() async => tracksToReturn;
+
+  final List<String> deletedAudioUrls = [];
+
+  @override
+  Future<bool> deletePhysicalTrack({
+    required String audioUrl,
+    required String trackId,
+  }) async {
+    deletedAudioUrls.add(audioUrl);
+    return true;
+  }
 }
 
 void main() {
@@ -78,6 +89,35 @@ void main() {
         repo.dispose();
       },
     );
+
+    test('AudioPlayerRepositoryImpl delegates physical deletion to LocalAudioDataSource', () async {
+      const sampleTrack = Track(
+        id: 'del_local_1',
+        title: 'Delete Test Track',
+        artist: 'Sample Artist',
+        duration: Duration(minutes: 3),
+        audioUrl: '/storage/emulated/0/Music/to_delete.mp3',
+      );
+
+      final mockDataSource = MockLocalAudioDataSource(
+        hasPermission: true,
+        tracksToReturn: [sampleTrack],
+      );
+      final repo = AudioPlayerRepositoryImpl(
+        localAudioDataSource: mockDataSource,
+        initialTracks: [sampleTrack],
+      );
+
+      expect(mockDataSource.deletedAudioUrls, isEmpty);
+
+      await repo.removeTrack(sampleTrack.id, deleteFromDevice: true);
+
+      expect(mockDataSource.deletedAudioUrls, contains(sampleTrack.audioUrl));
+      final remaining = await repo.getTracks();
+      expect(remaining.any((t) => t.id == sampleTrack.id), isFalse);
+
+      repo.dispose();
+    });
 
     test('searchTracks finds tracks by title, artist, or album', () async {
       const sampleTrack = Track(
