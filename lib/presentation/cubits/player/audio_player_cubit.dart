@@ -29,6 +29,10 @@ class AudioPlayerState extends Equatable {
     this.tracks = const [],
     this.playlists = const [],
     this.selectedPlaylist,
+    this.repeatMode = AudioRepeatMode.off,
+    this.isShuffleEnabled = false,
+    this.isSelectionMode = false,
+    this.selectedTrackIds = const {},
   });
 
   final AudioPlayerStatus status;
@@ -43,6 +47,12 @@ class AudioPlayerState extends Equatable {
   final List<Track> tracks;
   final List<Playlist> playlists;
   final Playlist? selectedPlaylist;
+  final AudioRepeatMode repeatMode;
+  final bool isShuffleEnabled;
+  final bool isSelectionMode;
+  final Set<String> selectedTrackIds;
+
+  bool isTrackSelected(String trackId) => selectedTrackIds.contains(trackId);
 
   String get formattedPosition {
     final minutes = position.inMinutes;
@@ -74,6 +84,10 @@ class AudioPlayerState extends Equatable {
     List<Track>? tracks,
     List<Playlist>? playlists,
     Playlist? selectedPlaylist,
+    AudioRepeatMode? repeatMode,
+    bool? isShuffleEnabled,
+    bool? isSelectionMode,
+    Set<String>? selectedTrackIds,
     bool clearError = false,
   }) {
     return AudioPlayerState(
@@ -89,6 +103,10 @@ class AudioPlayerState extends Equatable {
       tracks: tracks ?? this.tracks,
       playlists: playlists ?? this.playlists,
       selectedPlaylist: selectedPlaylist ?? this.selectedPlaylist,
+      repeatMode: repeatMode ?? this.repeatMode,
+      isShuffleEnabled: isShuffleEnabled ?? this.isShuffleEnabled,
+      isSelectionMode: isSelectionMode ?? this.isSelectionMode,
+      selectedTrackIds: selectedTrackIds ?? this.selectedTrackIds,
     );
   }
 
@@ -106,6 +124,10 @@ class AudioPlayerState extends Equatable {
     tracks,
     playlists,
     selectedPlaylist,
+    repeatMode,
+    isShuffleEnabled,
+    isSelectionMode,
+    selectedTrackIds,
   ];
 }
 
@@ -125,6 +147,10 @@ class AudioPlayerCubit extends Cubit<AudioPlayerState> {
     CheckAudioPermissionsUseCase? checkAudioPermissionsUseCase,
     RequestAudioPermissionsUseCase? requestAudioPermissionsUseCase,
     ScanLocalTracksUseCase? scanLocalTracksUseCase,
+    RemoveTrackUseCase? removeTrackUseCase,
+    RemoveTracksUseCase? removeTracksUseCase,
+    SetRepeatModeUseCase? setRepeatModeUseCase,
+    SetShuffleModeUseCase? setShuffleModeUseCase,
   }) : checkAudioPermissionsUseCase =
            checkAudioPermissionsUseCase ??
            CheckAudioPermissionsUseCase(audioPlayerRepository),
@@ -134,6 +160,15 @@ class AudioPlayerCubit extends Cubit<AudioPlayerState> {
        scanLocalTracksUseCase =
            scanLocalTracksUseCase ??
            ScanLocalTracksUseCase(audioPlayerRepository),
+       removeTrackUseCase =
+           removeTrackUseCase ?? RemoveTrackUseCase(audioPlayerRepository),
+       removeTracksUseCase =
+           removeTracksUseCase ?? RemoveTracksUseCase(audioPlayerRepository),
+       setRepeatModeUseCase =
+           setRepeatModeUseCase ?? SetRepeatModeUseCase(audioPlayerRepository),
+       setShuffleModeUseCase =
+           setShuffleModeUseCase ??
+           SetShuffleModeUseCase(audioPlayerRepository),
        super(const AudioPlayerState()) {
     _initSubscriptions();
   }
@@ -152,6 +187,10 @@ class AudioPlayerCubit extends Cubit<AudioPlayerState> {
   final CheckAudioPermissionsUseCase checkAudioPermissionsUseCase;
   final RequestAudioPermissionsUseCase requestAudioPermissionsUseCase;
   final ScanLocalTracksUseCase scanLocalTracksUseCase;
+  final RemoveTrackUseCase removeTrackUseCase;
+  final RemoveTracksUseCase removeTracksUseCase;
+  final SetRepeatModeUseCase setRepeatModeUseCase;
+  final SetShuffleModeUseCase setShuffleModeUseCase;
 
   StreamSubscription<bool>? _playingSub;
   StreamSubscription<Duration>? _positionSub;
@@ -353,10 +392,99 @@ class AudioPlayerCubit extends Cubit<AudioPlayerState> {
     emit(state.copyWith(tracks: updatedTracks));
   }
 
+  Future<void> cycleRepeatMode() async {
+    final nextMode = state.repeatMode.next;
+    await setRepeatModeUseCase.execute(nextMode);
+    emit(state.copyWith(repeatMode: nextMode));
+  }
+
+  Future<void> setRepeatMode(AudioRepeatMode mode) async {
+    await setRepeatModeUseCase.execute(mode);
+    emit(state.copyWith(repeatMode: mode));
+  }
+
+  Future<void> toggleShuffle() async {
+    final newShuffle = !state.isShuffleEnabled;
+    await setShuffleModeUseCase.execute(newShuffle);
+    emit(state.copyWith(isShuffleEnabled: newShuffle));
+  }
+
+  Future<void> removeTrack(String trackId) async {
+    await removeTrackUseCase.execute(trackId);
+    final updatedTracks = await getTracksUseCase.execute();
+    final updatedSelected = Set<String>.from(state.selectedTrackIds)
+      ..remove(trackId);
+    Track? current = state.currentTrack;
+    if (current?.id == trackId) {
+      current = updatedTracks.isNotEmpty ? updatedTracks.first : null;
+    }
+    emit(
+      state.copyWith(
+        tracks: updatedTracks,
+        selectedTrackIds: updatedSelected,
+        isSelectionMode: updatedSelected.isNotEmpty,
+        currentTrack: current,
+      ),
+    );
+  }
+
+  Future<void> removeSelectedTracks() async {
+    if (state.selectedTrackIds.isEmpty) return;
+    await removeTracksUseCase.execute(state.selectedTrackIds.toList());
+    final updatedTracks = await getTracksUseCase.execute();
+    Track? current = state.currentTrack;
+    if (current != null && state.selectedTrackIds.contains(current.id)) {
+      current = updatedTracks.isNotEmpty ? updatedTracks.first : null;
+    }
+    emit(
+      state.copyWith(
+        tracks: updatedTracks,
+        selectedTrackIds: const {},
+        isSelectionMode: false,
+        currentTrack: current,
+      ),
+    );
+  }
+
+  void toggleSelectionMode([bool? enabled]) {
+    final newMode = enabled ?? !state.isSelectionMode;
+    emit(
+      state.copyWith(
+        isSelectionMode: newMode,
+        selectedTrackIds: newMode ? state.selectedTrackIds : const {},
+      ),
+    );
+  }
+
+  void selectAllTracks() {
+    emit(
+      state.copyWith(
+        selectedTrackIds: state.tracks.map((t) => t.id).toSet(),
+        isSelectionMode: true,
+      ),
+    );
+  }
+
+  void clearSelection() {
+    emit(state.copyWith(selectedTrackIds: const {}, isSelectionMode: false));
+  }
+
   Future<void> toggleSelect(String trackId) async {
+    final newSelected = Set<String>.from(state.selectedTrackIds);
+    if (newSelected.contains(trackId)) {
+      newSelected.remove(trackId);
+    } else {
+      newSelected.add(trackId);
+    }
     await toggleSelectUseCase.execute(trackId);
     final updatedTracks = await getTracksUseCase.execute();
-    emit(state.copyWith(tracks: updatedTracks));
+    emit(
+      state.copyWith(
+        tracks: updatedTracks,
+        selectedTrackIds: newSelected,
+        isSelectionMode: newSelected.isNotEmpty,
+      ),
+    );
   }
 
   void selectPlaylist(Playlist playlist) {

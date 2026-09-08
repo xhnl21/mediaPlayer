@@ -1,4 +1,5 @@
 import 'package:media_player/domain/entities/playlist.dart';
+import 'package:media_player/domain/entities/repeat_mode.dart';
 import 'package:media_player/domain/entities/track.dart';
 
 abstract class AudioPlayerRepository {
@@ -15,11 +16,16 @@ abstract class AudioPlayerRepository {
   Future<void> next();
   Future<void> previous();
 
+  Future<void> setRepeatMode(AudioRepeatMode mode);
+  Future<void> setShuffle(bool enabled);
+
   Future<List<Playlist>> getPlaylists();
   Future<List<Track>> getTracks();
   Future<List<Track>> searchTracks(String query);
   Future<void> toggleFavorite(String trackId);
   Future<void> toggleSelect(String trackId);
+  Future<void> removeTrack(String trackId);
+  Future<void> removeTracks(List<String> trackIds);
 
   Future<bool> checkPermissions();
   Future<bool> requestPermissions();

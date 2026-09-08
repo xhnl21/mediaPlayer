@@ -213,3 +213,32 @@ En estricto cumplimiento de [.agents/goRoute.md](file:///Users/programacion/Docu
    - **iOS**: `Info.plist` configurado con `CFBundleURLTypes` y esquema `mediaplayer`.
    - Permite invocar pantallas directamente desde enlaces externos (por ejemplo: `mediaplayer://app/equalizer`).
 
+---
+
+## 8. Persistencia Local Drift (SQLite), Claves Primarias UUID v4 y Mejoras de Reproducción
+
+En estricto cumplimiento de [.agents/newFunctionPlayerMedia.md](file:///Users/programacion/Documents/mediaPlayer/.agents/newFunctionPlayerMedia.md) y de los requerimientos de persistencia relacional local con Drift y SQLite:
+
+### 1. Base de Datos Relacional Local con Drift y SQLite
+- Implementado utilizando `drift: ^2.16.0`, `sqlite3: ^3.5.2` y `uuid: ^4.6.0`.
+- **Claves Primarias Mandatorias UUID v4**: Todas las tablas de la base de datos local (incluyendo `FavoritesTable`) definen `TextColumn get id => text()();` como clave primaria mandatoria (`primaryKey => {id}`). La generación y validación de IDs utiliza exclusivamente la especificación UUID versión 4 RFC 4122.
+- **Data Source y Repositorio**: `DriftFavoritesDataSourceImpl` y `FavoritesRepositoryImpl` encapsulan las operaciones de inserción, consulta ordenada por fecha, eliminación por ID y suscripción reactiva a cambios mediante `watchAllFavorites()`.
+- **In-Memory Testing**: Para pruebas automatizadas de integración y repositorios, `AppDatabase` soporta constructores con `NativeDatabase.memory()`, permitiendo ejecución de tests instantánea y sin efectos secundarios en el sistema de archivos físico.
+
+### 2. Modos de Repetición (`AudioRepeatMode`)
+- Modos disponibles: `off` (sin repetición), `once` (repite la pista actual una vez al finalizar), y `all` (bucle continuo de la playlist).
+- Para evitar colisiones de nombres con el `RepeatMode` del framework Material de Flutter (`package:flutter/material.dart`), el enum del dominio se nombra `AudioRepeatMode` con alias tipado `typedef RepeatMode = AudioRepeatMode;`.
+- Gestionado reactivamente por `AudioPlayerCubit` e integrado con listeners de finalización de pista en `AudioPlayerRepositoryImpl`.
+
+### 3. Reproducción Aleatoria (Shuffle)
+- Botón de alternancia de reproducción aleatoria accesible desde la barra de herramientas de la lista de pistas.
+- Cuando está activo, la lista de pistas mantiene un orden pseudoaleatorio barajado sin repetición de temas hasta agotar la cola.
+
+### 4. Eliminación de Pistas y Confirmación Modal
+- **Eliminación individual**: Cada pista cuenta con un icono de borrado que despliega un diálogo de confirmación `AlertDialog` informando al usuario que la acción solo remueve la pista de la lista de reproducción en memoria y no elimina archivos físicos del almacenamiento del dispositivo.
+- **Selección múltiple**: Modo de selección por checkboxes con barra de acciones que indica la cantidad de pistas seleccionadas y botón de eliminación en bloque ("REMOVE ALL (N)").
+
+### 5. Supresión Definitiva de Iconos de Carrito de Compra
+- Se ha eliminado cualquier icono, botón, tooltip o texto alusivo a "carrito de compra" en las vistas de pistas, asegurando que la interfaz esté 100% enfocada en reproducción de audio y gestión de favoritos.
+
+

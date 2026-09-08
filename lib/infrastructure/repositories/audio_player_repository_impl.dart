@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:media_player/domain/entities/playlist.dart';
+import 'package:media_player/domain/entities/repeat_mode.dart';
 import 'package:media_player/domain/entities/track.dart';
 import 'package:media_player/domain/repositories/audio_player_repository.dart';
 import 'package:media_player/infrastructure/datasources/local_audio_data_source.dart';
@@ -29,6 +30,10 @@ class AudioPlayerRepositoryImpl implements AudioPlayerRepository {
   late final List<Playlist> _playlists;
   Track? _currentTrack;
   bool _isPlaying = false;
+  AudioRepeatMode _repeatMode = AudioRepeatMode.off;
+  bool _isShuffle = false;
+  final List<String> _shuffledOrder = [];
+  int _shuffledIndex = 0;
 
   final _isPlayingController = StreamController<bool>.broadcast();
   final _positionController = StreamController<Duration>.broadcast();
@@ -48,9 +53,9 @@ class AudioPlayerRepositoryImpl implements AudioPlayerRepository {
           _isPlaying = playerState.playing;
           _isPlayingController.add(_isPlaying);
 
-          // Continuous playback logic: auto-play next track when completed
+          // Continuous playback logic: handle repeat modes and shuffle on track completion
           if (playerState.processingState == ProcessingState.completed) {
-            next();
+            _onTrackCompleted();
           }
         },
         onError: (Object error) {
@@ -181,19 +186,149 @@ class AudioPlayerRepositoryImpl implements AudioPlayerRepository {
   }
 
   @override
+  Future<void> setRepeatMode(AudioRepeatMode mode) async {
+    _repeatMode = mode;
+  }
+
+  @override
+  Future<void> setShuffle(bool enabled) async {
+    _isShuffle = enabled;
+    if (_isShuffle) {
+      _rebuildShuffleQueue();
+    }
+  }
+
+  void _rebuildShuffleQueue() {
+    _shuffledOrder.clear();
+    final ids = _tracks.map((t) => t.id).toList()..shuffle();
+    if (_currentTrack != null) {
+      ids.remove(_currentTrack!.id);
+      ids.insert(0, _currentTrack!.id);
+    }
+    _shuffledOrder.addAll(ids);
+    _shuffledIndex = 0;
+  }
+
+  void _onTrackCompleted() async {
+    if (_tracks.isEmpty) return;
+
+    if (_repeatMode == AudioRepeatMode.once) {
+      _repeatMode = AudioRepeatMode.off;
+      if (_currentTrack != null) {
+        await play(_currentTrack!);
+      }
+      return;
+    }
+
+    if (_repeatMode == AudioRepeatMode.all && _tracks.length == 1) {
+      if (_currentTrack != null) {
+        await play(_currentTrack!);
+      }
+      return;
+    }
+
+    if (_isShuffle) {
+      await _nextShuffled();
+    } else {
+      final currentIndex = _tracks.indexWhere((t) => t.id == _currentTrack?.id);
+      if (currentIndex == -1) {
+        if (_tracks.isNotEmpty) await play(_tracks.first);
+        return;
+      }
+      final isLast = currentIndex >= _tracks.length - 1;
+      if (isLast && _repeatMode == AudioRepeatMode.off) {
+        await pause();
+        await seek(Duration.zero);
+      } else {
+        final nextIndex = (currentIndex + 1) % _tracks.length;
+        await play(_tracks[nextIndex]);
+      }
+    }
+  }
+
+  @override
   Future<void> next() async {
     if (_tracks.isEmpty) return;
-    final currentIndex = _tracks.indexWhere((t) => t.id == _currentTrack?.id);
-    final nextIndex = (currentIndex + 1) % _tracks.length;
-    await play(_tracks[nextIndex]);
+    if (_isShuffle) {
+      await _nextShuffled();
+    } else {
+      final currentIndex = _tracks.indexWhere((t) => t.id == _currentTrack?.id);
+      final nextIndex = (currentIndex + 1) % _tracks.length;
+      await play(_tracks[nextIndex]);
+    }
+  }
+
+  Future<void> _nextShuffled() async {
+    if (_tracks.isEmpty) return;
+    if (_shuffledOrder.isEmpty || _shuffledIndex >= _shuffledOrder.length - 1) {
+      _rebuildShuffleQueue();
+    } else {
+      _shuffledIndex++;
+    }
+    final nextId = _shuffledOrder.isNotEmpty
+        ? _shuffledOrder[_shuffledIndex]
+        : null;
+    final nextTrack = _tracks.firstWhere(
+      (t) => t.id == nextId,
+      orElse: () => _tracks.first,
+    );
+    await play(nextTrack);
   }
 
   @override
   Future<void> previous() async {
     if (_tracks.isEmpty) return;
+    if (_isShuffle) {
+      if (_shuffledOrder.isNotEmpty && _shuffledIndex > 0) {
+        _shuffledIndex--;
+        final prevId = _shuffledOrder[_shuffledIndex];
+        final prevTrack = _tracks.firstWhere(
+          (t) => t.id == prevId,
+          orElse: () => _tracks.first,
+        );
+        await play(prevTrack);
+        return;
+      }
+    }
     final currentIndex = _tracks.indexWhere((t) => t.id == _currentTrack?.id);
     final prevIndex = (currentIndex - 1 + _tracks.length) % _tracks.length;
     await play(_tracks[prevIndex]);
+  }
+
+  @override
+  Future<void> removeTrack(String trackId) async {
+    final isDeletingCurrent = _currentTrack?.id == trackId;
+    _tracks.removeWhere((t) => t.id == trackId);
+    _shuffledOrder.remove(trackId);
+
+    if (isDeletingCurrent) {
+      if (_tracks.isNotEmpty) {
+        await play(_tracks.first);
+      } else {
+        await pause();
+        _currentTrack = null;
+        _currentTrackController.add(null);
+      }
+    }
+  }
+
+  @override
+  Future<void> removeTracks(List<String> trackIds) async {
+    final idSet = trackIds.toSet();
+    final isDeletingCurrent =
+        _currentTrack != null && idSet.contains(_currentTrack!.id);
+    _tracks.removeWhere((t) => idSet.contains(t.id));
+    _shuffledOrder.removeWhere((id) => idSet.contains(id));
+
+    if (isDeletingCurrent) {
+      if (_tracks.isNotEmpty) {
+        await play(_tracks.first);
+      } else {
+        await pause();
+        _currentTrack = null;
+        _currentTrackController.add(null);
+      }
+    }
   }
 
   @override

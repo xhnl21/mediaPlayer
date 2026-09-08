@@ -28,6 +28,10 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<LocalAudioDataSource>(
     () => LocalAudioDataSourceImpl(),
   );
+  sl.registerLazySingleton<AppDatabase>(() => AppDatabase());
+  sl.registerLazySingleton<DriftFavoritesDataSource>(
+    () => DriftFavoritesDataSourceImpl(sl<AppDatabase>()),
+  );
 
   // 2. Repositories
   sl.registerLazySingleton<SecurityAuditRepository>(
@@ -54,6 +58,9 @@ Future<void> initDependencies() async {
     () => SettingsRepositoryImpl(
       secureDataSource: sl<SecureEncryptedDataSource>(),
     ),
+  );
+  sl.registerLazySingleton<FavoritesRepository>(
+    () => FavoritesRepositoryImpl(dataSource: sl<DriftFavoritesDataSource>()),
   );
 
   // 3. Application Use Cases
@@ -112,6 +119,30 @@ Future<void> initDependencies() async {
   );
   sl.registerLazySingleton(
     () => ScanLocalTracksUseCase(sl<AudioPlayerRepository>()),
+  );
+  sl.registerLazySingleton(
+    () => RemoveTrackUseCase(sl<AudioPlayerRepository>()),
+  );
+  sl.registerLazySingleton(
+    () => RemoveTracksUseCase(sl<AudioPlayerRepository>()),
+  );
+  sl.registerLazySingleton(
+    () => SetRepeatModeUseCase(sl<AudioPlayerRepository>()),
+  );
+  sl.registerLazySingleton(
+    () => SetShuffleModeUseCase(sl<AudioPlayerRepository>()),
+  );
+
+  // Favorites
+  sl.registerLazySingleton(
+    () => GetFavoritesUseCase(sl<FavoritesRepository>()),
+  );
+  sl.registerLazySingleton(
+    () => ToggleFavoriteTrackUseCase(sl<FavoritesRepository>()),
+  );
+  sl.registerLazySingleton(() => IsFavoriteUseCase(sl<FavoritesRepository>()));
+  sl.registerLazySingleton(
+    () => RemoveFavoriteTrackUseCase(sl<FavoritesRepository>()),
   );
 
   // Equalizer

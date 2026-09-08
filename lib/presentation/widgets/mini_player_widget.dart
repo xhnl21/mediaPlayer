@@ -14,7 +14,6 @@ class MiniPlayerWidget extends StatelessWidget {
       builder: (context, state) {
         final horizontalPadding = context.padding(0.05).clamp(14.0, 24.0);
         final verticalPadding = context.h(0.01).clamp(6.0, 12.0);
-        final buttonSpacing = context.w(0.06).clamp(16.0, 32.0);
         final playBtnSize = context.iconSize(44);
 
         return Container(
@@ -118,7 +117,7 @@ class MiniPlayerWidget extends StatelessWidget {
                     onPressed: () =>
                         context.read<AudioPlayerCubit>().previous(),
                   ),
-                  SizedBox(width: buttonSpacing),
+                  SizedBox(width: context.w(0.06).clamp(16.0, 32.0)),
                   InkWell(
                     onTap: () =>
                         context.read<AudioPlayerCubit>().togglePlayPause(),
@@ -150,7 +149,7 @@ class MiniPlayerWidget extends StatelessWidget {
                             ),
                     ),
                   ),
-                  SizedBox(width: buttonSpacing),
+                  SizedBox(width: context.w(0.06).clamp(16.0, 32.0)),
                   IconButton(
                     icon: Icon(
                       Icons.skip_next_rounded,

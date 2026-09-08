@@ -46,6 +46,14 @@ class MediaPlayerApp extends StatelessWidget {
             scanLocalTracksUseCase: sl<ScanLocalTracksUseCase>(),
           ),
         ),
+        BlocProvider<FavoritesCubit>(
+          create: (_) => FavoritesCubit(
+            getFavoritesUseCase: sl<GetFavoritesUseCase>(),
+            toggleFavoriteTrackUseCase: sl<ToggleFavoriteTrackUseCase>(),
+            removeFavoriteTrackUseCase: sl<RemoveFavoriteTrackUseCase>(),
+            favoritesRepository: sl<FavoritesRepository>(),
+          ),
+        ),
         BlocProvider<LibraryCubit>(
           create: (_) => LibraryCubit(
             getPlaylistsUseCase: sl<GetPlaylistsUseCase>(),
