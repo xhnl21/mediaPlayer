@@ -14,3 +14,4 @@ export 'repositories/radio_repository_impl.dart';
 export 'repositories/security_audit_repository_impl.dart';
 export 'repositories/settings_repository_impl.dart';
 export 'repositories/voice_recorder_repository_impl.dart';
+export 'services/audio_player_handler.dart';

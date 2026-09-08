@@ -8,13 +8,16 @@ import 'package:media_player/domain/entities/track.dart';
 import 'package:media_player/domain/repositories/audio_player_repository.dart';
 import 'package:media_player/infrastructure/datasources/local_audio_data_source.dart';
 import 'package:media_player/infrastructure/datasources/music_mock_data_source.dart';
+import 'package:media_player/infrastructure/services/audio_player_handler.dart';
 
 class AudioPlayerRepositoryImpl implements AudioPlayerRepository {
   AudioPlayerRepositoryImpl({
     AudioPlayer? player,
+    AudioPlayerHandlerImpl? audioHandler,
     LocalAudioDataSource? localAudioDataSource,
     List<Track>? initialTracks,
-  }) : _player = player ?? AudioPlayer(),
+  }) : _audioHandler = audioHandler,
+       _player = audioHandler?.player ?? (player ?? AudioPlayer()),
        _localAudioDataSource =
            localAudioDataSource ?? LocalAudioDataSourceImpl() {
     _tracks = List<Track>.from(
@@ -23,9 +26,16 @@ class AudioPlayerRepositoryImpl implements AudioPlayerRepository {
     _playlists = List<Playlist>.from(MusicMockDataSource.defaultPlaylists);
     _currentTrack = _tracks.isNotEmpty ? _tracks.first : null;
 
+    if (_audioHandler != null) {
+      _audioHandler.onSkipToNextRequested = () => next();
+      _audioHandler.onSkipToPreviousRequested = () => previous();
+      _audioHandler.onTrackCompleted = () => _onTrackCompleted();
+    }
+
     _initPlayerListeners();
   }
 
+  final AudioPlayerHandlerImpl? _audioHandler;
   final AudioPlayer _player;
   final LocalAudioDataSource _localAudioDataSource;
 
@@ -118,6 +128,8 @@ class AudioPlayerRepositoryImpl implements AudioPlayerRepository {
   @override
   Stream<AudioRepeatMode> get repeatModeStream => _repeatModeController.stream;
 
+  Track? get currentTrack => _currentTrack;
+
   @override
   Future<void> play(Track track) async {
     _currentTrack = track;
@@ -128,7 +140,9 @@ class AudioPlayerRepositoryImpl implements AudioPlayerRepository {
     }
 
     try {
-      if (track.audioUrl.isNotEmpty) {
+      if (_audioHandler != null) {
+        await _audioHandler.playTrack(track);
+      } else if (track.audioUrl.isNotEmpty) {
         if (track.audioUrl.startsWith('content://')) {
           await _player.setAudioSource(
             AudioSource.uri(Uri.parse(track.audioUrl)),
@@ -162,7 +176,11 @@ class AudioPlayerRepositoryImpl implements AudioPlayerRepository {
   @override
   Future<void> pause() async {
     try {
-      await _player.pause();
+      if (_audioHandler != null) {
+        await _audioHandler.pause();
+      } else {
+        await _player.pause();
+      }
     } catch (e) {
       debugPrint('AudioPlayer pause exception: $e');
     }
@@ -173,7 +191,9 @@ class AudioPlayerRepositoryImpl implements AudioPlayerRepository {
   @override
   Future<void> resume() async {
     try {
-      if (_player.audioSource != null) {
+      if (_audioHandler != null) {
+        await _audioHandler.play();
+      } else if (_player.audioSource != null) {
         await _player.play();
       } else if (_currentTrack != null) {
         await play(_currentTrack!);
@@ -189,7 +209,11 @@ class AudioPlayerRepositoryImpl implements AudioPlayerRepository {
   @override
   Future<void> seek(Duration position) async {
     try {
-      await _player.seek(position);
+      if (_audioHandler != null) {
+        await _audioHandler.seek(position);
+      } else {
+        await _player.seek(position);
+      }
     } catch (e) {
       debugPrint('AudioPlayer seek exception: $e');
     }
@@ -201,11 +225,15 @@ class AudioPlayerRepositoryImpl implements AudioPlayerRepository {
     _repeatMode = mode;
     _repeatModeController.add(_repeatMode);
     try {
-      // AudioRepeatMode.all loops the current audio indefinitely via just_audio's native LoopMode.one
-      if (mode == AudioRepeatMode.all) {
-        await _player.setLoopMode(LoopMode.one);
+      if (_audioHandler != null) {
+        await _audioHandler.setAudioRepeatMode(mode);
       } else {
-        await _player.setLoopMode(LoopMode.off);
+        // AudioRepeatMode.all loops the current audio indefinitely via just_audio's native LoopMode.one
+        if (mode == AudioRepeatMode.all) {
+          await _player.setLoopMode(LoopMode.one);
+        } else {
+          await _player.setLoopMode(LoopMode.off);
+        }
       }
     } catch (e) {
       debugPrint('AudioPlayer setLoopMode exception: $e');
@@ -215,6 +243,7 @@ class AudioPlayerRepositoryImpl implements AudioPlayerRepository {
   @override
   Future<void> setShuffle(bool enabled) async {
     _isShuffle = enabled;
+    _audioHandler?.setShuffle(enabled);
     if (_isShuffle) {
       _rebuildShuffleQueue();
     }
@@ -238,6 +267,7 @@ class AudioPlayerRepositoryImpl implements AudioPlayerRepository {
     if (_repeatMode == AudioRepeatMode.once) {
       _repeatMode = AudioRepeatMode.off;
       _repeatModeController.add(AudioRepeatMode.off);
+      await _audioHandler?.setAudioRepeatMode(AudioRepeatMode.off);
       try {
         await _player.seek(Duration.zero);
         await _player.play();
@@ -477,7 +507,11 @@ class AudioPlayerRepositoryImpl implements AudioPlayerRepository {
     _positionSub?.cancel();
     _durationSub?.cancel();
     _playbackEventSub?.cancel();
-    _player.dispose();
+    if (_audioHandler != null) {
+      _audioHandler.dispose();
+    } else {
+      _player.dispose();
+    }
     _isPlayingController.close();
     _positionController.close();
     _durationController.close();

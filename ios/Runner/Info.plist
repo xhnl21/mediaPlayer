@@ -68,6 +68,10 @@
 	</array>
 	<key>NSAppleMusicUsageDescription</key>
 	<string>Media Player requires access to your music library to scan and play local audio tracks.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
