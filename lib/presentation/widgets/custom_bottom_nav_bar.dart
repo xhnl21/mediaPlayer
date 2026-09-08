@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:media_player/core/core.dart';
 
+import 'package:media_player/presentation/utils/responsive_extensions.dart';
+
 class CustomBottomNavBar extends StatelessWidget {
   const CustomBottomNavBar({
     required this.selectedIndex,
@@ -13,41 +15,52 @@ class CustomBottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 60,
-      decoration: const BoxDecoration(
-        color: AppColors.cardSurface,
-        border: Border(top: BorderSide(color: AppColors.divider, width: 0.5)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _NavBarItem(
-            icon: Icons.star_border_rounded,
-            isSelected: selectedIndex == 0,
-            onTap: () => onItemSelected(0),
-          ),
-          _NavBarItem(
-            icon: Icons.search_rounded,
-            isSelected: selectedIndex == 1,
-            onTap: () => onItemSelected(1),
-          ),
-          _NavBarItem(
-            icon: Icons.music_note_rounded,
-            isSelected: selectedIndex == 2,
-            onTap: () => onItemSelected(2),
-          ),
-          _NavBarItem(
-            icon: Icons.tune_rounded,
-            isSelected: selectedIndex == 3,
-            onTap: () => onItemSelected(3),
-          ),
-          _NavBarItem(
-            icon: Icons.settings_outlined,
-            isSelected: selectedIndex == 4,
-            onTap: () => onItemSelected(4),
-          ),
-        ],
+    final barHeight = context.h(0.072).clamp(54.0, 68.0);
+
+    return SafeArea(
+      top: false,
+      child: Container(
+        height: barHeight,
+        decoration: const BoxDecoration(
+          color: AppColors.cardSurface,
+          // Justified exception: 0.5 hairline divider
+          border: Border(top: BorderSide(color: AppColors.divider, width: 0.5)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _NavBarItem(
+              icon: Icons.star_border_rounded,
+              isSelected: selectedIndex == 0,
+              onTap: () => onItemSelected(0),
+              barHeight: barHeight,
+            ),
+            _NavBarItem(
+              icon: Icons.search_rounded,
+              isSelected: selectedIndex == 1,
+              onTap: () => onItemSelected(1),
+              barHeight: barHeight,
+            ),
+            _NavBarItem(
+              icon: Icons.music_note_rounded,
+              isSelected: selectedIndex == 2,
+              onTap: () => onItemSelected(2),
+              barHeight: barHeight,
+            ),
+            _NavBarItem(
+              icon: Icons.tune_rounded,
+              isSelected: selectedIndex == 3,
+              onTap: () => onItemSelected(3),
+              barHeight: barHeight,
+            ),
+            _NavBarItem(
+              icon: Icons.settings_outlined,
+              isSelected: selectedIndex == 4,
+              onTap: () => onItemSelected(4),
+              barHeight: barHeight,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -58,20 +71,24 @@ class _NavBarItem extends StatelessWidget {
     required this.icon,
     required this.isSelected,
     required this.onTap,
+    required this.barHeight,
   });
 
   final IconData icon;
   final bool isSelected;
   final VoidCallback onTap;
+  final double barHeight;
 
   @override
   Widget build(BuildContext context) {
+    final itemSize = (barHeight * 0.70).clamp(36.0, 48.0);
+
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(itemSize / 2),
       child: Container(
-        width: 42,
-        height: 42,
+        width: itemSize,
+        height: itemSize,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: isSelected
@@ -80,7 +97,7 @@ class _NavBarItem extends StatelessWidget {
         ),
         child: Icon(
           icon,
-          size: 24,
+          size: context.iconSize(24),
           color: isSelected ? AppColors.textLight : AppColors.iconInactive,
         ),
       ),

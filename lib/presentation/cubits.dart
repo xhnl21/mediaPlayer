@@ -1,6 +1,8 @@
 export 'cubits/auth/auth_cubit.dart';
 export 'cubits/auth/auth_form_cubit.dart';
 export 'cubits/equalizer/equalizer_cubit.dart';
+export 'cubits/favorites/favorites_cubit.dart';
+export 'cubits/favorites/favorites_state.dart';
 export 'cubits/library/library_cubit.dart';
 export 'cubits/navigation/navigation_cubit.dart';
 export 'cubits/player/audio_player_cubit.dart';

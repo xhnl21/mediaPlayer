@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:media_player/core/core.dart';
 import 'package:media_player/presentation/cubits.dart';
 
+import 'package:media_player/presentation/utils/responsive_extensions.dart';
+
 class MiniPlayerWidget extends StatelessWidget {
   const MiniPlayerWidget({super.key});
 
@@ -10,10 +12,18 @@ class MiniPlayerWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<AudioPlayerCubit, AudioPlayerState>(
       builder: (context, state) {
+        final horizontalPadding = context.padding(0.05).clamp(14.0, 24.0);
+        final verticalPadding = context.h(0.01).clamp(6.0, 12.0);
+        final playBtnSize = context.iconSize(44);
+
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          padding: EdgeInsets.symmetric(
+            horizontal: horizontalPadding,
+            vertical: verticalPadding,
+          ),
           decoration: const BoxDecoration(
             color: AppColors.cardSurface,
+            // Justified exception: 0.5 hairline divider
             border: Border(
               top: BorderSide(color: AppColors.divider, width: 0.5),
             ),
@@ -21,6 +31,28 @@ class MiniPlayerWidget extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Track Info
+              if (state.currentTrack != null) ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${state.currentTrack!.title} • ${state.currentTrack!.artist}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.labelSmall.copyWith(
+                          color: AppColors.textLight,
+                          fontWeight: FontWeight.bold,
+                          fontSize: context.sp(11),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: context.h(0.003).clamp(1.0, 4.0)),
+              ],
+
               // Progress timestamps
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -29,21 +61,24 @@ class MiniPlayerWidget extends StatelessWidget {
                     state.formattedPosition,
                     style: AppTypography.labelSmall.copyWith(
                       color: AppColors.textLight,
+                      fontSize: context.sp(11),
                     ),
                   ),
                   Text(
                     state.formattedDuration,
                     style: AppTypography.labelSmall.copyWith(
                       color: AppColors.textLight,
+                      fontSize: context.sp(11),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: context.h(0.005).clamp(2.0, 6.0)),
 
               // Progress slider
               SliderTheme(
                 data: SliderTheme.of(context).copyWith(
+                  // Justified exception: 3px track height for precision audio seek
                   trackHeight: 3,
                   thumbShape: const RoundSliderThumbShape(
                     enabledThumbRadius: 6,
@@ -74,41 +109,52 @@ class MiniPlayerWidget extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   IconButton(
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.skip_previous_rounded,
                       color: AppColors.textLight,
-                      size: 28,
+                      size: context.iconSize(28),
                     ),
                     onPressed: () =>
                         context.read<AudioPlayerCubit>().previous(),
                   ),
-                  const SizedBox(width: 24),
+                  SizedBox(width: context.w(0.06).clamp(16.0, 32.0)),
                   InkWell(
                     onTap: () =>
                         context.read<AudioPlayerCubit>().togglePlayPause(),
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(playBtnSize / 2),
                     child: Container(
-                      width: 44,
-                      height: 44,
+                      width: playBtnSize,
+                      height: playBtnSize,
                       decoration: const BoxDecoration(
                         shape: BoxShape.circle,
                         color: Colors.transparent,
                       ),
-                      child: Icon(
-                        state.isPlaying
-                            ? Icons.pause_rounded
-                            : Icons.play_arrow_rounded,
-                        color: AppColors.textLight,
-                        size: 34,
-                      ),
+                      child: state.status == AudioPlayerStatus.loading
+                          ? Center(
+                              child: SizedBox(
+                                width: context.iconSize(22),
+                                height: context.iconSize(22),
+                                child: const CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.accentCoral,
+                                ),
+                              ),
+                            )
+                          : Icon(
+                              state.isPlaying
+                                  ? Icons.pause_rounded
+                                  : Icons.play_arrow_rounded,
+                              color: AppColors.textLight,
+                              size: context.iconSize(34),
+                            ),
                     ),
                   ),
-                  const SizedBox(width: 24),
+                  SizedBox(width: context.w(0.06).clamp(16.0, 32.0)),
                   IconButton(
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.skip_next_rounded,
                       color: AppColors.textLight,
-                      size: 28,
+                      size: context.iconSize(28),
                     ),
                     onPressed: () => context.read<AudioPlayerCubit>().next(),
                   ),

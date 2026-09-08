@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:media_player/core/core.dart';
 import 'package:media_player/presentation/cubits.dart';
+import 'package:media_player/presentation/utils/responsive_extensions.dart';
 import 'package:media_player/presentation/widgets.dart';
 
 class EqualizerScreen extends StatelessWidget {
@@ -10,23 +11,36 @@ class EqualizerScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const presets = ['Lorem', 'Ipsum', 'Dolor', 'Sit', 'Amet'];
+    final horizontalPadding = context.w(0.04).clamp(12.0, 24.0);
+    final verticalPadding = context.h(0.012).clamp(6.0, 16.0);
+    final faderHeight =
+        (context.isLandscape ? context.h(0.24) : context.h(0.18)).clamp(
+          100.0,
+          180.0,
+        );
+    final btnWidth = context.w(0.46).clamp(140.0, 240.0);
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+          padding: EdgeInsets.symmetric(
+            horizontal: horizontalPadding,
+            vertical: verticalPadding,
+          ),
           child: BlocBuilder<EqualizerCubit, EqualizerState>(
             builder: (context, state) {
               return Column(
                 children: [
-                  const SizedBox(height: 8),
+                  SizedBox(height: context.h(0.01).clamp(4.0, 12.0)),
                   // Title
                   Text(
                     'Dolor sit',
-                    style: AppTypography.displayMedium.copyWith(fontSize: 22),
+                    style: AppTypography.displayMedium.copyWith(
+                      fontSize: context.sp(22),
+                    ),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: context.h(0.02).clamp(10.0, 20.0)),
 
                   // 6 Vertical Faders
                   Row(
@@ -35,6 +49,7 @@ class EqualizerScreen extends StatelessWidget {
                       return VerticalFaderSlider(
                         label: band.label,
                         value: band.gain.normalized,
+                        height: faderHeight,
                         onChanged: (val) {
                           context.read<EqualizerCubit>().setBandGain(
                             band.id,
@@ -44,7 +59,7 @@ class EqualizerScreen extends StatelessWidget {
                       );
                     }).toList(),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: context.h(0.02).clamp(10.0, 20.0)),
 
                   // Preset Tabs Row: Lorem, Ipsum, Dolor, Sit, Amet
                   Row(
@@ -62,6 +77,7 @@ class EqualizerScreen extends StatelessWidget {
                                 : AppColors.textSecondary.withValues(
                                     alpha: 0.6,
                                   ),
+                            fontSize: context.sp(12),
                             fontWeight: isSelected
                                 ? FontWeight.bold
                                 : FontWeight.normal,
@@ -70,7 +86,7 @@ class EqualizerScreen extends StatelessWidget {
                       );
                     }).toList(),
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: context.h(0.028).clamp(14.0, 28.0)),
 
                   // 3 Rotary Knobs: Bass, Treble, Vocal
                   Row(
@@ -96,25 +112,26 @@ class EqualizerScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 28),
+                  SizedBox(height: context.h(0.032).clamp(16.0, 32.0)),
 
                   // CREATE Button
                   CommonCoralButton(
                     text: 'CREATE',
-                    width: 180,
+                    width: btnWidth,
                     onPressed: () {
                       context.read<EqualizerCubit>().save();
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
+                        SnackBar(
                           content: Text(
                             'Equalizer profile saved and encrypted',
+                            style: TextStyle(fontSize: context.sp(13)),
                           ),
                           backgroundColor: AppColors.cardSurfaceLight,
                         ),
                       );
                     },
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: context.h(0.02).clamp(10.0, 20.0)),
                 ],
               );
             },

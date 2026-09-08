@@ -181,3 +181,70 @@ En estricto cumplimiento de [.agents/barriles.md](file:///Users/programacion/Doc
      - Valida recursivamente que ningún archivo en `lib/presentation/`, `lib/domain/` o `lib/application/` contenga imports de `infrastructure`.
      - Valida que `lib/infrastructure/infrastructure.dart` solo sea importado de forma exclusiva por `lib/core/di/injection_container.dart`.
 
+---
+
+## 7. Enrutamiento Declarativo y Deep Linking Centralizado (GoRouter)
+
+En estricto cumplimiento de [.agents/goRoute.md](file:///Users/programacion/Documents/mediaPlayer/.agents/goRoute.md), se ha migrado el sistema de navegación a una arquitectura declarativa, segura y centralizada con `go_router`:
+
+### Principios y Componentes
+
+1. **Constantes Centralizadas de Rutas (`lib/presentation/router/route_names.dart`)**:
+   - Centraliza todas las rutas como constantes inmutables (`welcome`, `auth`, `dashboard`, `search`, `tracks`, `myPlaylist`, `album`, `radio`, `equalizer`, `recorder`, `settings`, `profile`).
+   - Evita "magic strings" y desacopla la definición de la URL de las pantallas consumidoras.
+
+2. **Configuración de Enrutador (`lib/presentation/router/app_router.dart`)**:
+   - `AppRouter.createRouter(authCubit)`: Fabrica la instancia singleton de `GoRouter` vinculada reactivamente a los cambios de estado de `AuthCubit` mediante `GoRouterRefreshStream`.
+   - **Auth Guards (`redirect`)**:
+     - Usuarios no autenticados que intentan acceder a rutas protegidas (`/dashboard`, `/equalizer`, `/radio`, etc.) son redirigidos automáticamente a `/welcome`.
+     - Usuarios autenticados que intentan acceder a rutas públicas de autenticación (`/welcome`, `/auth`) son redirigidos automáticamente a `/dashboard`.
+   - **Rutas Anidadas con `ShellRoute`**:
+     - Las rutas de contenido protegido se renderizan dentro de `ShellRoute` alojando a `MainShellScreen`.
+     - Proporciona persistencia de la barra de navegación inferior (`CustomBottomNavBar`), barra superior adaptativa y espacio para el mini reproductor.
+   - **Manejo de Errores 404 (`_NotFoundScreen`)**:
+     - Intercepta cualquier URL desconocida o deep link no registrado mostrando una interfaz estilizada con botón para retornar a la ruta de inicio.
+
+3. **Compatibilidad Bidireccional con BLoC (`NavigationCubit`)**:
+   - Los eventos de cambio de pantalla en `NavigationCubit` despachan comandos declarativos `AppRouter.router.go(routePath)`.
+   - A su vez, `MainShellScreen` calcula el índice de la barra inferior reactivamente a partir de `GoRouterState.of(context).matchedLocation`, garantizando sincronía perfecta entre URL y UI.
+
+4. **Soporte de Deep Linking**:
+   - **Android**: `AndroidManifest.xml` configurado con filtro de intención `<intent-filter>` para el esquema `mediaplayer://app`.
+   - **iOS**: `Info.plist` configurado con `CFBundleURLTypes` y esquema `mediaplayer`.
+   - Permite invocar pantallas directamente desde enlaces externos (por ejemplo: `mediaplayer://app/equalizer`).
+
+---
+
+## 8. Persistencia Local Drift (SQLite), Claves Primarias UUID v4 y Mejoras de Reproducción
+
+En estricto cumplimiento de [.agents/newFunctionPlayerMedia.md](file:///Users/programacion/Documents/mediaPlayer/.agents/newFunctionPlayerMedia.md) y de los requerimientos de persistencia relacional local con Drift y SQLite:
+
+### 1. Base de Datos Relacional Local con Drift y SQLite
+- Implementado utilizando `drift: ^2.16.0`, `sqlite3: ^3.5.2` y `uuid: ^4.6.0`.
+- **Claves Primarias Mandatorias UUID v4**: Todas las tablas de la base de datos local (incluyendo `FavoritesTable`) definen `TextColumn get id => text()();` como clave primaria mandatoria (`primaryKey => {id}`). La generación y validación de IDs utiliza exclusivamente la especificación UUID versión 4 RFC 4122.
+- **Data Source y Repositorio**: `DriftFavoritesDataSourceImpl` y `FavoritesRepositoryImpl` encapsulan las operaciones de inserción, consulta ordenada por fecha, eliminación por ID y suscripción reactiva a cambios mediante `watchAllFavorites()`.
+- **In-Memory Testing**: Para pruebas automatizadas de integración y repositorios, `AppDatabase` soporta constructores con `NativeDatabase.memory()`, permitiendo ejecución de tests instantánea y sin efectos secundarios en el sistema de archivos físico.
+
+### 2. Modos de Repetición y Bucle Nativo (`AudioRepeatMode`)
+- Modos disponibles:
+  - `off`: Sin repetición. Al terminar la pista se avanza normalmente o se pausa si es la última canción.
+  - `once`: Repite el audio actual una sola vez al terminar (`seek(Duration.zero)` + `play()`), retornando inmediatamente el modo a `off` y emitiendo el cambio a través de `repeatModeStream`.
+  - `all`: Bucle indefinido del audio actual (`LoopMode.one` nativo de hardware en `just_audio` o repetición continua al completarse), permitiendo reproducción cíclica sin interrupciones.
+- Para evitar colisiones de nombres con el `RepeatMode` del framework Material de Flutter (`package:flutter/material.dart`), el enum del dominio se nombra `AudioRepeatMode` con alias tipado `typedef RepeatMode = AudioRepeatMode;`.
+- La capa de presentación (`PlaylistTracksScreen` y `AudioPlayerCubit`) se suscribe reactivamente a `audioPlayerRepository.repeatModeStream`, actualizando los iconos dinámicamente (`repeat_rounded`, `repeat_one_rounded`, `all_inclusive_rounded`).
+
+### 3. Reproducción Aleatoria (Shuffle)
+- Botón de alternancia de reproducción aleatoria accesible desde la barra de herramientas de la lista de pistas.
+- Cuando está activo, la lista de pistas mantiene un orden pseudoaleatorio barajado sin repetición de temas hasta agotar la cola.
+
+### 4. Diálogo de Opciones de Eliminación: Lista vs. Dispositivo Físico
+- **Diálogo Modal Explicito (`_showDeleteOptionsDialog`)**: Al intentar eliminar una o varias pistas (individual o selección múltiple), la aplicación despliega un diálogo modal que le consulta al usuario dónde desea realizar el borrado:
+  1. **"Remove from Playlist Only" (`DeleteOption.playlistOnly`)**: Remueve las pistas únicamente de la lista de reproducción en memoria, preservando intacto el archivo físico en el almacenamiento del dispositivo.
+  2. **"Delete from Device & Playlist" (`DeleteOption.deviceAndPlaylist`)**: Elimina el archivo físico de forma permanente del almacenamiento local del dispositivo (`File(audioUrl).delete()`), lo remueve de la lista de reproducción en memoria y purga el registro de favoritos en la base de datos Drift SQLite.
+  3. **"CANCEL" (`DeleteOption.cancel`)**: Descarta la acción sin realizar modificaciones.
+- **Selección Múltiple (Batch Delete)**: Modo de selección por checkboxes con barra de acciones que indica la cantidad de pistas seleccionadas y botón de eliminación en bloque ("Delete (N)"), activando el mismo flujo de decisión explícito con soporte de borrado masivo físico o en memoria.
+
+### 5. Supresión Definitiva de Iconos de Carrito de Compra
+- Se ha eliminado cualquier icono, botón, tooltip o texto alusivo a "carrito de compra" en las vistas de pistas, asegurando que la interfaz esté 100% enfocada en reproducción de audio y gestión de favoritos.
+
+

@@ -2,16 +2,19 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:media_player/core/core.dart';
+import 'package:media_player/presentation/utils/responsive_extensions.dart';
 
 class InteractiveWaveformTuner extends StatelessWidget {
   const InteractiveWaveformTuner({
     required this.currentFrequency,
     required this.onFrequencyChanged,
     super.key,
+    this.height,
   });
 
   final double currentFrequency;
   final ValueChanged<double> onFrequencyChanged;
+  final double? height;
 
   static const List<double> scaleMarkers = [
     101.7,
@@ -24,6 +27,9 @@ class InteractiveWaveformTuner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tunerHeight = height ?? (context.h(0.14).clamp(90.0, 150.0));
+    final horizontalPadding = context.padding(0.04).clamp(12.0, 24.0);
+
     return Column(
       children: [
         // Waveform graphic with tuning pointer
@@ -39,7 +45,7 @@ class InteractiveWaveformTuner extends StatelessWidget {
             onFrequencyChanged(double.parse(freq.toStringAsFixed(1)));
           },
           child: SizedBox(
-            height: 120,
+            height: tunerHeight,
             width: double.infinity,
             child: CustomPaint(
               painter: _WaveformPainter(
@@ -50,27 +56,34 @@ class InteractiveWaveformTuner extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: context.h(0.015).clamp(8.0, 16.0)),
 
         // Frequency numbers row
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: scaleMarkers.map((marker) {
               final isSelected = (currentFrequency - marker).abs() < 0.15;
-              return GestureDetector(
-                onTap: () => onFrequencyChanged(marker),
-                child: Text(
-                  marker.toStringAsFixed(1),
-                  style: AppTypography.labelSmall.copyWith(
-                    color: isSelected
-                        ? AppColors.accentCoral
-                        : AppColors.textSecondary,
-                    fontWeight: isSelected
-                        ? FontWeight.bold
-                        : FontWeight.normal,
-                    fontSize: isSelected ? 13 : 11,
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => onFrequencyChanged(marker),
+                  child: Center(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        marker.toStringAsFixed(1),
+                        style: AppTypography.labelSmall.copyWith(
+                          color: isSelected
+                              ? AppColors.accentCoral
+                              : AppColors.textSecondary,
+                          fontWeight: isSelected
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                          fontSize: context.sp(isSelected ? 13 : 11),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               );
@@ -95,6 +108,7 @@ class _WaveformPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // Justified exception: 2.0 stroke width for waveform curve
     final wavePaint = Paint()
       ..color = AppColors.textLight.withValues(alpha: 0.8)
       ..style = PaintingStyle.stroke
@@ -109,8 +123,8 @@ class _WaveformPainter extends CustomPainter {
       final progress = x / size.width;
       final y =
           midY +
-          math.sin(progress * math.pi * 5) * 28 +
-          math.sin(progress * math.pi * 9) * 12;
+          math.sin(progress * math.pi * 5) * (size.height * 0.23) +
+          math.sin(progress * math.pi * 9) * (size.height * 0.10);
       path.lineTo(x, y);
     }
     canvas.drawPath(path, wavePaint);
@@ -120,29 +134,28 @@ class _WaveformPainter extends CustomPainter {
     final pinX = norm * size.width;
     final pinY =
         midY +
-        math.sin(norm * math.pi * 5) * 28 +
-        math.sin(norm * math.pi * 9) * 12;
+        math.sin(norm * math.pi * 5) * (size.height * 0.23) +
+        math.sin(norm * math.pi * 9) * (size.height * 0.10);
 
     // Draw vertical indicator line
+    // Justified exception: 2.0 stroke width for indicator line
     final linePaint = Paint()
       ..color = AppColors.accentCoral
       ..strokeWidth = 2.0;
-    canvas.drawLine(
-      Offset(pinX, 10),
-      Offset(pinX, size.height - 10),
-      linePaint,
-    );
+    canvas.drawLine(Offset(pinX, 8), Offset(pinX, size.height - 8), linePaint);
 
     // Draw circle marker on waveform
     final circlePaint = Paint()
       ..color = AppColors.accentCoral
       ..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(pinX, pinY), 7, circlePaint);
+    final outerMarkerRadius = (size.height * 0.058).clamp(5.0, 8.0);
+    canvas.drawCircle(Offset(pinX, pinY), outerMarkerRadius, circlePaint);
 
     final innerCirclePaint = Paint()
       ..color = AppColors.textLight
       ..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(pinX, pinY), 3.5, innerCirclePaint);
+    final innerMarkerRadius = (outerMarkerRadius * 0.5).clamp(2.5, 4.0);
+    canvas.drawCircle(Offset(pinX, pinY), innerMarkerRadius, innerCirclePaint);
   }
 
   @override

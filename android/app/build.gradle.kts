@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.antigravity.mediaplayer.media_player"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -27,6 +27,21 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["appName"] = "MediaPlayer"
+    }
+
+    flavorDimensions += "default"
+    productFlavors {
+        create("dev") {
+            dimension = "default"
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+            manifestPlaceholders["appName"] = "MediaPlayer Dev"
+        }
+        create("prod") {
+            dimension = "default"
+            manifestPlaceholders["appName"] = "MediaPlayer"
+        }
     }
 
     buildTypes {
@@ -35,6 +50,10 @@ android {
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
         }
+    }
+
+    androidResources {
+        noCompress += listOf("bin", "json", "otf", "ttf", "frag", "Z", "data")
     }
 }
 

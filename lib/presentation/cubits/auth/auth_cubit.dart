@@ -102,6 +102,16 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
+  Future<void> continueAsGuest() async {
+    final guestUser = UserProfile(
+      id: 'guest_user',
+      name: 'Guest User',
+      email: EmailAddress('guest@mediaplayer.app'),
+      phone: '+1000000000',
+    );
+    emit(Authenticated(guestUser));
+  }
+
   Future<void> logout() async {
     emit(const AuthLoading());
     try {
