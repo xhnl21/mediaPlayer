@@ -51,6 +51,10 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    androidResources {
+        noCompress += listOf("bin", "json", "otf", "ttf", "frag", "Z", "data")
+    }
 }
 
 kotlin {
