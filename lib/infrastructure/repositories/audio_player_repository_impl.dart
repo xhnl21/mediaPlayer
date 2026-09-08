@@ -343,7 +343,7 @@ class AudioPlayerRepositoryImpl implements AudioPlayerRepository {
     final track = _tracks[trackIndex];
 
     if (deleteFromDevice) {
-      await _deletePhysicalFile(audioUrl: track.audioUrl, trackId: track.id);
+      await _deletePhysicalFiles([track]);
     }
 
     final isDeletingCurrent = _currentTrack?.id == trackId;
@@ -369,10 +369,8 @@ class AudioPlayerRepositoryImpl implements AudioPlayerRepository {
     final idSet = trackIds.toSet();
     final tracksToDelete = _tracks.where((t) => idSet.contains(t.id)).toList();
 
-    if (deleteFromDevice) {
-      for (final t in tracksToDelete) {
-        await _deletePhysicalFile(audioUrl: t.audioUrl, trackId: t.id);
-      }
+    if (deleteFromDevice && tracksToDelete.isNotEmpty) {
+      await _deletePhysicalFiles(tracksToDelete);
     }
 
     final isDeletingCurrent =
@@ -391,24 +389,15 @@ class AudioPlayerRepositoryImpl implements AudioPlayerRepository {
     }
   }
 
-  Future<void> _deletePhysicalFile({
-    required String audioUrl,
-    required String trackId,
-  }) async {
-    if (audioUrl.isEmpty) return;
-    if (audioUrl.startsWith('http://') ||
-        audioUrl.startsWith('https://') ||
-        audioUrl.startsWith('mock://')) {
-      return;
-    }
+  Future<void> _deletePhysicalFiles(List<Track> tracks) async {
+    if (tracks.isEmpty) return;
     try {
-      await _localAudioDataSource.deletePhysicalTrack(
-        audioUrl: audioUrl,
-        trackId: trackId,
-      );
+      await _localAudioDataSource.deletePhysicalTracks(tracks);
     } catch (e) {
-      debugPrint('AudioPlayerRepositoryImpl._deletePhysicalFile exception: $e');
-      _playbackErrorController.add('Could not delete physical audio file: $e');
+      debugPrint(
+        'AudioPlayerRepositoryImpl._deletePhysicalFiles exception: $e',
+      );
+      _playbackErrorController.add('Could not delete physical audio files: $e');
     }
   }
 

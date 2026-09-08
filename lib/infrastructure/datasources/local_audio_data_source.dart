@@ -14,6 +14,7 @@ abstract class LocalAudioDataSource {
     required String audioUrl,
     required String trackId,
   });
+  Future<bool> deletePhysicalTracks(List<Track> tracks);
 }
 
 class LocalAudioDataSourceImpl implements LocalAudioDataSource {
@@ -163,51 +164,77 @@ class LocalAudioDataSourceImpl implements LocalAudioDataSource {
     required String audioUrl,
     required String trackId,
   }) async {
-    if (audioUrl.isEmpty) return false;
-    if (audioUrl.startsWith('http://') ||
-        audioUrl.startsWith('https://') ||
-        audioUrl.startsWith('mock://')) {
-      return false;
-    }
+    return deletePhysicalTracks([
+      Track(
+        id: trackId,
+        title: '',
+        artist: '',
+        duration: Duration.zero,
+        audioUrl: audioUrl,
+      ),
+    ]);
+  }
+
+  @override
+  Future<bool> deletePhysicalTracks(List<Track> tracks) async {
+    if (tracks.isEmpty) return true;
+
+    final validTracks = tracks.where((t) {
+      final url = t.audioUrl.trim();
+      return url.isNotEmpty &&
+          !url.startsWith('http://') &&
+          !url.startsWith('https://') &&
+          !url.startsWith('mock://');
+    }).toList();
+
+    if (validTracks.isEmpty) return false;
 
     bool deleted = false;
 
-    // 1. Invoke native Android channel for MediaStore + ContentResolver + File + Scanner deletion
+    // 1. Invoke native Android channel in a single batch request (MediaStore prompts only ONCE)
     if (!kIsWeb && Platform.isAndroid) {
       try {
-        final result = await _channel.invokeMethod<bool>('deleteAudio', {
-          'path': audioUrl,
-          'id': trackId,
+        final items = validTracks
+            .map((t) => {'path': t.audioUrl, 'id': t.id})
+            .toList();
+        final result = await _channel.invokeMethod<bool>('deleteAudios', {
+          'items': items,
         });
         if (result == true) {
           deleted = true;
         }
       } catch (e) {
         debugPrint(
-          'LocalAudioDataSource.deletePhysicalTrack native channel exception: $e',
+          'LocalAudioDataSource.deletePhysicalTracks native channel exception: $e',
         );
       }
     }
 
-    // 2. Direct filesystem deletion (works on iOS, desktop, unit tests, and Android with file access)
-    try {
-      final file = File(audioUrl);
-      if (await file.exists()) {
-        await file.delete();
-        deleted = true;
+    // 2. Direct filesystem deletion fallback for all tracks (works on iOS, desktop, unit tests)
+    for (final track in validTracks) {
+      try {
+        final file = File(track.audioUrl);
+        if (await file.exists()) {
+          await file.delete();
+          deleted = true;
+        }
+      } catch (e) {
+        debugPrint(
+          'LocalAudioDataSource.deletePhysicalTracks direct File exception for ${track.audioUrl}: $e',
+        );
       }
-    } catch (e) {
-      debugPrint(
-        'LocalAudioDataSource.deletePhysicalTrack direct File exception: $e',
-      );
     }
 
-    // 3. Rescan media so on_audio_query and Android system drop the cached media entry
-    if (!kIsWeb && Platform.isAndroid && !audioUrl.startsWith('content://')) {
-      try {
-        await _audioQuery.scanMedia(audioUrl);
-      } catch (e) {
-        debugPrint('LocalAudioDataSource scanMedia exception: $e');
+    // 3. Rescan media for all paths so on_audio_query and Android system update cache
+    if (!kIsWeb && Platform.isAndroid) {
+      for (final track in validTracks) {
+        if (!track.audioUrl.startsWith('content://')) {
+          try {
+            await _audioQuery.scanMedia(track.audioUrl);
+          } catch (e) {
+            debugPrint('LocalAudioDataSource scanMedia exception: $e');
+          }
+        }
       }
     }
 
