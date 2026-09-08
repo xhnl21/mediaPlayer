@@ -168,9 +168,10 @@ class MyPlaylistScreen extends StatelessWidget {
                     itemBuilder: (context, index) {
                       final track = state.tracks[index];
                       return Container(
-                        height: rowHeight,
+                        constraints: BoxConstraints(minHeight: rowHeight),
                         padding: EdgeInsets.symmetric(
                           horizontal: context.w(0.03).clamp(8.0, 16.0),
+                          vertical: context.h(0.006).clamp(4.0, 8.0),
                         ),
                         decoration: BoxDecoration(
                           color: AppColors.cardSurface.withValues(alpha: 0.6),
@@ -210,15 +211,21 @@ class MyPlaylistScreen extends StatelessWidget {
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
                                     track.title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                     style: AppTypography.titleMedium.copyWith(
                                       fontSize: context.sp(13),
                                     ),
                                   ),
+                                  const SizedBox(height: 2),
                                   Text(
                                     track.artist,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                     style: AppTypography.bodySmall.copyWith(
                                       fontSize: context.sp(11),
                                     ),
@@ -228,11 +235,16 @@ class MyPlaylistScreen extends StatelessWidget {
                             ),
                             IconButton(
                               icon: Icon(
-                                Icons.shopping_cart_outlined,
-                                color: AppColors.textLight,
-                                size: context.iconSize(19),
+                                Icons.play_circle_fill_rounded,
+                                color: AppColors.accentCoral,
+                                size: context.iconSize(22),
                               ),
-                              onPressed: () {},
+                              tooltip: 'Play track',
+                              onPressed: () {
+                                context.read<AudioPlayerCubit>().playTrack(
+                                  track,
+                                );
+                              },
                             ),
                           ],
                         ),

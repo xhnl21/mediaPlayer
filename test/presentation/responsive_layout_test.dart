@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:media_player/core/core.dart';
+import 'package:media_player/domain/entities/track.dart';
 import 'package:media_player/main.dart';
 import 'package:media_player/presentation/cubits.dart';
 
@@ -140,5 +141,56 @@ void main() {
         expect(find.text('Log out'), findsOneWidget);
       });
     }
+
+    testWidgets(
+      'MyPlaylistScreen renders long track titles without RenderFlex overflow on small device with high pixel density',
+      (tester) async {
+        // Simulates Redmi Note 8 screen density (2.8 DPR, 360x640 logical resolution)
+        tester.view.physicalSize = const Size(1008, 1792);
+        tester.view.devicePixelRatio = 2.8;
+        addTearDown(() => tester.view.resetPhysicalSize());
+
+        await tester.pumpWidget(const MediaPlayerApp());
+        await tester.pumpAndSettle();
+
+        // Authenticate as guest so protected routes are accessible
+        await tester
+            .element(find.byType(MaterialApp))
+            .read<AuthCubit>()
+            .continueAsGuest();
+        await tester.pumpAndSettle();
+
+        final navCubit = tester
+            .element(find.byType(MaterialApp))
+            .read<NavigationCubit>();
+        final playerCubit = tester
+            .element(find.byType(MaterialApp))
+            .read<AudioPlayerCubit>();
+
+        const longTitleTrack = Track(
+          id: 'long_title_1',
+          title: 'Alexandra Stan - Mr. Saxobeat (Official Video)',
+          artist: 'Alexandra Stan • Ultra Music Extended Dance Version',
+          album: 'Saxobeats Deluxe',
+          duration: Duration(minutes: 3, seconds: 15),
+          audioUrl: '/storage/emulated/0/Music/saxobeat.mp3',
+        );
+        playerCubit.emit(
+          playerCubit.state.copyWith(
+            tracks: [longTitleTrack, ...playerCubit.state.tracks],
+          ),
+        );
+
+        navCubit.navigateTo(AppScreen.myPlaylist);
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        expect(
+          find.text('Alexandra Stan - Mr. Saxobeat (Official Video)'),
+          findsOneWidget,
+        );
+        expect(find.byIcon(Icons.shopping_cart_outlined), findsNothing);
+      },
+    );
   });
 }

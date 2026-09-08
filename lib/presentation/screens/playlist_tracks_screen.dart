@@ -1040,9 +1040,10 @@ class _TrackItemRow extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(rowHeight / 2),
       child: Container(
-        height: rowHeight,
+        constraints: BoxConstraints(minHeight: rowHeight),
         padding: EdgeInsets.symmetric(
           horizontal: context.w(0.035).clamp(10.0, 18.0),
+          vertical: context.h(0.006).clamp(4.0, 8.0),
         ),
         decoration: BoxDecoration(
           color: isPlaying
@@ -1086,6 +1087,7 @@ class _TrackItemRow extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     track.title,
