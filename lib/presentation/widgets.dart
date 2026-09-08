@@ -6,4 +6,5 @@ export 'widgets/custom_bottom_nav_bar.dart';
 export 'widgets/interactive_waveform_tuner.dart';
 export 'widgets/mini_player_widget.dart';
 export 'widgets/rotary_knob_widget.dart';
+export 'widgets/text.dart';
 export 'widgets/vertical_fader_slider.dart';

@@ -59,12 +59,12 @@ class MyPlaylistScreen extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
+                              Texts(
                                 'My Playlist',
-                                style: AppTypography.titleLarge.copyWith(
-                                  fontSize: context.sp(19),
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                style: AppTypography.titleLarge,
+                                fontSize: context.sp(19),
+                                fontWeight: FontWeight.bold,
+                                fittedBox: true,
                               ),
                               SizedBox(
                                 height: context.h(0.005).clamp(2.0, 6.0),
@@ -213,22 +213,22 @@ class MyPlaylistScreen extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Text(
+                                  Texts(
                                     track.title,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: AppTypography.titleMedium.copyWith(
-                                      fontSize: context.sp(13),
-                                    ),
+                                    style: AppTypography.titleMedium,
+                                    fontSize: context.sp(13),
+                                    fittedBox: true,
                                   ),
                                   const SizedBox(height: 2),
-                                  Text(
+                                  Texts(
                                     track.artist,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: AppTypography.bodySmall.copyWith(
-                                      fontSize: context.sp(11),
-                                    ),
+                                    style: AppTypography.bodySmall,
+                                    fontSize: context.sp(11),
+                                    fittedBox: true,
                                   ),
                                 ],
                               ),

@@ -1089,25 +1089,25 @@ class _TrackItemRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
+                  Texts(
                     track.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTypography.titleMedium.copyWith(
-                      color: AppColors.textLight,
-                      fontSize: context.sp(14),
-                      fontWeight: isPlaying ? FontWeight.bold : FontWeight.w600,
-                    ),
+                    style: AppTypography.titleMedium,
+                    color: AppColors.textLight,
+                    fontSize: context.sp(14),
+                    fontWeight: isPlaying ? FontWeight.bold : FontWeight.w600,
+                    fittedBox: true,
                   ),
                   SizedBox(height: context.h(0.003).clamp(1.0, 4.0)),
-                  Text(
+                  Texts(
                     '${track.artist}${track.album.isNotEmpty ? " • ${track.album}" : ""} • ${track.formattedDuration}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
-                      fontSize: context.sp(11),
-                    ),
+                    style: AppTypography.bodySmall,
+                    color: AppColors.textSecondary,
+                    fontSize: context.sp(11),
+                    fittedBox: true,
                   ),
                 ],
               ),
