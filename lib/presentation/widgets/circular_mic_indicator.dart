@@ -19,9 +19,12 @@ class CircularMicIndicator extends StatelessWidget {
     final pulseScale = isRecording ? (1.0 + amplitude * 0.15) : 1.0;
 
     // Dynamically proportioned concentric circles
-    final outerSize = size ??
-        (context.isLandscape ? context.h(0.35) : context.w(0.50))
-            .clamp(130.0, 220.0);
+    final outerSize =
+        size ??
+        (context.isLandscape ? context.h(0.35) : context.w(0.50)).clamp(
+          130.0,
+          220.0,
+        );
     final midSize = outerSize * 0.75;
     final innerSize = outerSize * 0.50;
     final iconRadius = innerSize * 0.54;

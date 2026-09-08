@@ -50,7 +50,9 @@ class VoiceRecorderScreen extends StatelessWidget {
                                     fontSize: context.sp(15),
                                   ),
                                 ),
-                                SizedBox(width: context.w(0.01).clamp(2.0, 6.0)),
+                                SizedBox(
+                                  width: context.w(0.01).clamp(2.0, 6.0),
+                                ),
                                 Icon(
                                   Icons.keyboard_arrow_down_rounded,
                                   color: AppColors.textLight,
@@ -82,7 +84,9 @@ class VoiceRecorderScreen extends StatelessWidget {
                                   letterSpacing: 2.0,
                                 ),
                               ),
-                              SizedBox(height: context.h(0.015).clamp(8.0, 16.0)),
+                              SizedBox(
+                                height: context.h(0.015).clamp(8.0, 16.0),
+                              ),
 
                               // Progress bar with coral line
                               // Justified exception: 3px progress bar height
@@ -96,7 +100,9 @@ class VoiceRecorderScreen extends StatelessWidget {
                                   alignment: Alignment.centerLeft,
                                   child: FractionallySizedBox(
                                     widthFactor: state.isRecording ? 0.6 : 0.0,
-                                    child: Container(color: AppColors.accentCoral),
+                                    child: Container(
+                                      color: AppColors.accentCoral,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -180,8 +186,9 @@ class VoiceRecorderScreen extends StatelessWidget {
 
                                 // Record Button (Large Circle)
                                 GestureDetector(
-                                  onTap: () =>
-                                      context.read<RecorderCubit>().toggleRecording(),
+                                  onTap: () => context
+                                      .read<RecorderCubit>()
+                                      .toggleRecording(),
                                   child: Container(
                                     width: recordBtnSize,
                                     height: recordBtnSize,
@@ -224,7 +231,9 @@ class VoiceRecorderScreen extends StatelessWidget {
                                   ),
                                   onPressed: () {
                                     if (state.isRecording) {
-                                      context.read<RecorderCubit>().toggleRecording();
+                                      context
+                                          .read<RecorderCubit>()
+                                          .toggleRecording();
                                     }
                                   },
                                 ),

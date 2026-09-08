@@ -142,11 +142,7 @@ class _WaveformPainter extends CustomPainter {
     final linePaint = Paint()
       ..color = AppColors.accentCoral
       ..strokeWidth = 2.0;
-    canvas.drawLine(
-      Offset(pinX, 8),
-      Offset(pinX, size.height - 8),
-      linePaint,
-    );
+    canvas.drawLine(Offset(pinX, 8), Offset(pinX, size.height - 8), linePaint);
 
     // Draw circle marker on waveform
     final circlePaint = Paint()

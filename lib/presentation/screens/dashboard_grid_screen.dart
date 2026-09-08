@@ -56,7 +56,9 @@ class DashboardGridScreen extends StatelessWidget {
     final verticalPadding = context.h(0.015).clamp(8.0, 18.0);
     final gridSpacing = context.w(0.04).clamp(12.0, 20.0);
     final crossCount = (context.isTablet || context.isLandscape) ? 4 : 2;
-    final aspectRatio = context.isLandscape ? 1.35 : (context.isTablet ? 1.25 : 1.15);
+    final aspectRatio = context.isLandscape
+        ? 1.35
+        : (context.isTablet ? 1.25 : 1.15);
     final cardRadius = context.w(0.04).clamp(12.0, 20.0);
 
     return Scaffold(

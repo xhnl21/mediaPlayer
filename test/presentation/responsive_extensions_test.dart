@@ -83,32 +83,31 @@ void main() {
       expect(testContext.sp(16), lessThanOrEqualTo(24.0));
     });
 
-    testWidgets('identifies landscape orientation and scales according to height', (
-      tester,
-    ) async {
-      late BuildContext testContext;
+    testWidgets(
+      'identifies landscape orientation and scales according to height',
+      (tester) async {
+        late BuildContext testContext;
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: MediaQuery(
-            data: const MediaQueryData(
-              size: Size(1280, 800),
-            ),
-            child: Builder(
-              builder: (context) {
-                testContext = context;
-                return const SizedBox();
-              },
+        await tester.pumpWidget(
+          MaterialApp(
+            home: MediaQuery(
+              data: const MediaQueryData(size: Size(1280, 800)),
+              child: Builder(
+                builder: (context) {
+                  testContext = context;
+                  return const SizedBox();
+                },
+              ),
             ),
           ),
-        ),
-      );
+        );
 
-      expect(testContext.isLandscape, isTrue);
-      expect(testContext.isPortrait, isFalse);
-      expect(testContext.isTablet, isTrue);
-      expect(testContext.w(0.5), 640.0);
-      expect(testContext.h(0.5), 400.0);
-    });
+        expect(testContext.isLandscape, isTrue);
+        expect(testContext.isPortrait, isFalse);
+        expect(testContext.isTablet, isTrue);
+        expect(testContext.w(0.5), 640.0);
+        expect(testContext.h(0.5), 400.0);
+      },
+    );
   });
 }

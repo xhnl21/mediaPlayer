@@ -55,7 +55,9 @@ class SearchGenresScreen extends StatelessWidget {
                         return InkWell(
                           onTap: () =>
                               context.read<LibraryCubit>().selectGenre(genre),
-                          borderRadius: BorderRadius.circular(context.w(0.04).clamp(12.0, 20.0)),
+                          borderRadius: BorderRadius.circular(
+                            context.w(0.04).clamp(12.0, 20.0),
+                          ),
                           child: Container(
                             height: cardHeight,
                             padding: EdgeInsets.symmetric(
@@ -96,7 +98,9 @@ class SearchGenresScreen extends StatelessWidget {
                                     size: context.iconSize(28),
                                   ),
                                 ),
-                                SizedBox(width: context.w(0.04).clamp(10.0, 20.0)),
+                                SizedBox(
+                                  width: context.w(0.04).clamp(10.0, 20.0),
+                                ),
                                 // Genre title and subtitle
                                 Expanded(
                                   child: Column(
@@ -112,7 +116,11 @@ class SearchGenresScreen extends StatelessWidget {
                                               fontSize: context.sp(17),
                                             ),
                                       ),
-                                      SizedBox(height: context.h(0.003).clamp(1.0, 4.0)),
+                                      SizedBox(
+                                        height: context
+                                            .h(0.003)
+                                            .clamp(1.0, 4.0),
+                                      ),
                                       Text(
                                         'Lorem ipsum dolor sit amet\nadipiscing elit',
                                         style: AppTypography.bodySmall.copyWith(

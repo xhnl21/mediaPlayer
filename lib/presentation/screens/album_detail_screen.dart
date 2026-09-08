@@ -31,7 +31,9 @@ class AlbumDetailScreen extends StatelessWidget {
                 padding: EdgeInsets.all(cardPadding),
                 decoration: BoxDecoration(
                   color: AppColors.textLight,
-                  borderRadius: BorderRadius.circular(context.w(0.04).clamp(12.0, 20.0)),
+                  borderRadius: BorderRadius.circular(
+                    context.w(0.04).clamp(12.0, 20.0),
+                  ),
                   boxShadow: const [
                     BoxShadow(
                       color: AppColors.shadow,
@@ -48,7 +50,9 @@ class AlbumDetailScreen extends StatelessWidget {
                       height: albumArtSize,
                       decoration: BoxDecoration(
                         color: AppColors.cardSurface,
-                        borderRadius: BorderRadius.circular(albumArtSize * 0.16),
+                        borderRadius: BorderRadius.circular(
+                          albumArtSize * 0.16,
+                        ),
                       ),
                       child: Center(
                         child: Icon(

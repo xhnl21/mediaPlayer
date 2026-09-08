@@ -32,6 +32,28 @@ class MiniPlayerWidget extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Track Info
+              if (state.currentTrack != null) ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${state.currentTrack!.title} • ${state.currentTrack!.artist}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.labelSmall.copyWith(
+                          color: AppColors.textLight,
+                          fontWeight: FontWeight.bold,
+                          fontSize: context.sp(11),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: context.h(0.003).clamp(1.0, 4.0)),
+              ],
+
               // Progress timestamps
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -108,13 +130,24 @@ class MiniPlayerWidget extends StatelessWidget {
                         shape: BoxShape.circle,
                         color: Colors.transparent,
                       ),
-                      child: Icon(
-                        state.isPlaying
-                            ? Icons.pause_rounded
-                            : Icons.play_arrow_rounded,
-                        color: AppColors.textLight,
-                        size: context.iconSize(34),
-                      ),
+                      child: state.status == AudioPlayerStatus.loading
+                          ? Center(
+                              child: SizedBox(
+                                width: context.iconSize(22),
+                                height: context.iconSize(22),
+                                child: const CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.accentCoral,
+                                ),
+                              ),
+                            )
+                          : Icon(
+                              state.isPlaying
+                                  ? Icons.pause_rounded
+                                  : Icons.play_arrow_rounded,
+                              color: AppColors.textLight,
+                              size: context.iconSize(34),
+                            ),
                     ),
                   ),
                   SizedBox(width: buttonSpacing),

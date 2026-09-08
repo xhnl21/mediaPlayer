@@ -6,6 +6,7 @@ abstract class AudioPlayerRepository {
   Stream<Duration> get positionStream;
   Stream<Duration> get durationStream;
   Stream<Track?> get currentTrackStream;
+  Stream<String?> get playbackErrorStream;
 
   Future<void> play(Track track);
   Future<void> pause();
@@ -19,4 +20,11 @@ abstract class AudioPlayerRepository {
   Future<List<Track>> searchTracks(String query);
   Future<void> toggleFavorite(String trackId);
   Future<void> toggleSelect(String trackId);
+
+  Future<bool> checkPermissions();
+  Future<bool> requestPermissions();
+  Future<List<Track>> scanLocalTracks();
 }
+
+/// Domain alias to match DDD specification
+typedef AudioRepository = AudioPlayerRepository;

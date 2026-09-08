@@ -39,6 +39,8 @@ dependencies:
   crypto: ^3.0.6
   flutter_secure_storage: ^9.2.4
   just_audio: ^0.9.46
+  on_audio_query: ^2.9.0
+  permission_handler: ^13.0.2
 
 dev_dependencies:
   flutter_test:

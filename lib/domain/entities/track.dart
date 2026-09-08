@@ -6,6 +6,7 @@ class Track extends Equatable {
     required this.title,
     required this.artist,
     required this.duration,
+    this.album = '',
     this.audioUrl = '',
     this.genre = 'Pop',
     this.isFavorite = false,
@@ -16,6 +17,7 @@ class Track extends Equatable {
   final String id;
   final String title;
   final String artist;
+  final String album;
   final Duration duration;
   final String audioUrl;
   final String genre;
@@ -33,6 +35,7 @@ class Track extends Equatable {
     String? id,
     String? title,
     String? artist,
+    String? album,
     Duration? duration,
     String? audioUrl,
     String? genre,
@@ -44,6 +47,7 @@ class Track extends Equatable {
       id: id ?? this.id,
       title: title ?? this.title,
       artist: artist ?? this.artist,
+      album: album ?? this.album,
       duration: duration ?? this.duration,
       audioUrl: audioUrl ?? this.audioUrl,
       genre: genre ?? this.genre,
@@ -58,6 +62,7 @@ class Track extends Equatable {
     id,
     title,
     artist,
+    album,
     duration,
     audioUrl,
     genre,
@@ -66,3 +71,6 @@ class Track extends Equatable {
     coverUrl,
   ];
 }
+
+/// Domain alias to match DDD specification
+typedef AudioTrack = Track;

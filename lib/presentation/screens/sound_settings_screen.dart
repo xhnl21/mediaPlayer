@@ -38,7 +38,9 @@ class SoundSettingsScreen extends StatelessWidget {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              SizedBox(height: context.h(0.01).clamp(4.0, 12.0)),
+                              SizedBox(
+                                height: context.h(0.01).clamp(4.0, 12.0),
+                              ),
                               // Title
                               Text(
                                 'LOREM COLOR',
@@ -47,7 +49,9 @@ class SoundSettingsScreen extends StatelessWidget {
                                 ),
                                 textAlign: TextAlign.center,
                               ),
-                              SizedBox(height: context.h(0.03).clamp(14.0, 30.0)),
+                              SizedBox(
+                                height: context.h(0.03).clamp(14.0, 30.0),
+                              ),
 
                               // 4 Switch Items
                               _buildToggleRow(
@@ -123,7 +127,8 @@ class SoundSettingsScreen extends StatelessWidget {
                                           fontSize: context.sp(13),
                                         ),
                                       ),
-                                      backgroundColor: AppColors.cardSurfaceLight,
+                                      backgroundColor:
+                                          AppColors.cardSurfaceLight,
                                     ),
                                   );
                                 },

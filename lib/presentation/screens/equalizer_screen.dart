@@ -13,8 +13,11 @@ class EqualizerScreen extends StatelessWidget {
     const presets = ['Lorem', 'Ipsum', 'Dolor', 'Sit', 'Amet'];
     final horizontalPadding = context.w(0.04).clamp(12.0, 24.0);
     final verticalPadding = context.h(0.012).clamp(6.0, 16.0);
-    final faderHeight = (context.isLandscape ? context.h(0.24) : context.h(0.18))
-        .clamp(100.0, 180.0);
+    final faderHeight =
+        (context.isLandscape ? context.h(0.24) : context.h(0.18)).clamp(
+          100.0,
+          180.0,
+        );
     final btnWidth = context.w(0.46).clamp(140.0, 240.0);
 
     return Scaffold(

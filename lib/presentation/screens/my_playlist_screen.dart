@@ -30,7 +30,9 @@ class MyPlaylistScreen extends StatelessWidget {
                 padding: EdgeInsets.all(cardPadding),
                 decoration: BoxDecoration(
                   color: AppColors.cardSurface,
-                  borderRadius: BorderRadius.circular(context.w(0.05).clamp(14.0, 22.0)),
+                  borderRadius: BorderRadius.circular(
+                    context.w(0.05).clamp(14.0, 22.0),
+                  ),
                 ),
                 child: Column(
                   children: [
@@ -64,7 +66,9 @@ class MyPlaylistScreen extends StatelessWidget {
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              SizedBox(height: context.h(0.005).clamp(2.0, 6.0)),
+                              SizedBox(
+                                height: context.h(0.005).clamp(2.0, 6.0),
+                              ),
                               Text(
                                 'March 1 at 20:00\n100 songs / 155 minutes',
                                 style: AppTypography.bodySmall.copyWith(

@@ -40,6 +40,10 @@ class MediaPlayerApp extends StatelessWidget {
             getTracksUseCase: sl<GetTracksUseCase>(),
             toggleFavoriteUseCase: sl<ToggleFavoriteUseCase>(),
             toggleSelectUseCase: sl<ToggleSelectUseCase>(),
+            checkAudioPermissionsUseCase: sl<CheckAudioPermissionsUseCase>(),
+            requestAudioPermissionsUseCase:
+                sl<RequestAudioPermissionsUseCase>(),
+            scanLocalTracksUseCase: sl<ScanLocalTracksUseCase>(),
           ),
         ),
         BlocProvider<LibraryCubit>(

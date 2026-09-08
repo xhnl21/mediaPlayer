@@ -1,6 +1,7 @@
 // Infrastructure barrel file: exclusively for composition root / DI (Service Locator).
 // DO NOT import this file from presentation or domain layers.
 
+export 'datasources/local_audio_data_source.dart';
 export 'datasources/music_mock_data_source.dart';
 export 'datasources/secure_encrypted_data_source.dart';
 export 'repositories/audio_player_repository_impl.dart';

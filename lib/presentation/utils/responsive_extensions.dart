@@ -75,7 +75,10 @@ extension ResponsiveContext on BuildContext {
   }
 
   /// Proportional EdgeInsets symmetric helper.
-  EdgeInsets paddingSymmetric({double horizontal = 0.0, double vertical = 0.0}) {
+  EdgeInsets paddingSymmetric({
+    double horizontal = 0.0,
+    double vertical = 0.0,
+  }) {
     return EdgeInsets.symmetric(
       horizontal: w(horizontal),
       vertical: h(vertical),

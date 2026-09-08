@@ -14,8 +14,11 @@ class RadioFmScreen extends StatelessWidget {
     final verticalPadding = context.h(0.015).clamp(8.0, 18.0);
     final transportSpacing = context.w(0.06).clamp(16.0, 32.0);
     final playBtnSize = context.iconSize(48);
-    final tunerHeight = (context.isLandscape ? context.h(0.20) : context.h(0.14))
-        .clamp(80.0, 140.0);
+    final tunerHeight =
+        (context.isLandscape ? context.h(0.20) : context.h(0.14)).clamp(
+          80.0,
+          140.0,
+        );
 
     return Scaffold(
       backgroundColor: AppColors.background,

@@ -31,107 +31,108 @@ void main() {
       final name = entry.key;
       final size = entry.value;
 
-      testWidgets(
-        'Renders all screens on $name without visual overflows',
-        (tester) async {
-          tester.view.physicalSize = size;
-          tester.view.devicePixelRatio = 1.0;
-          addTearDown(() => tester.view.resetPhysicalSize());
+      testWidgets('Renders all screens on $name without visual overflows', (
+        tester,
+      ) async {
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() => tester.view.resetPhysicalSize());
 
-          await tester.pumpWidget(const MediaPlayerApp());
-          await tester.pumpAndSettle();
+        await tester.pumpWidget(const MediaPlayerApp());
+        await tester.pumpAndSettle();
 
-          // 1. Welcome Screen
-          expect(tester.takeException(), isNull);
-          expect(find.text('MOBILE APP'), findsOneWidget);
+        // 1. Welcome Screen
+        expect(tester.takeException(), isNull);
+        expect(find.text('MOBILE APP'), findsOneWidget);
 
-          // 2. Auth Screen (Log In & Sign Up tabs)
-          final navCubit = tester.element(find.byType(MaterialApp)).read<NavigationCubit>();
+        // 2. Auth Screen (Log In & Sign Up tabs)
+        final navCubit = tester
+            .element(find.byType(MaterialApp))
+            .read<NavigationCubit>();
 
-          navCubit.navigateTo(AppScreen.auth);
-          await tester.pumpAndSettle();
-          expect(tester.takeException(), isNull);
-          expect(find.text('LOG IN'), findsWidgets);
+        navCubit.navigateTo(AppScreen.auth);
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(find.text('LOG IN'), findsWidgets);
 
-          // Tap SIGN UP tab
-          await tester.tap(find.text('SIGN UP'));
-          await tester.pumpAndSettle();
-          expect(tester.takeException(), isNull);
-          expect(find.text('Confirm password'), findsOneWidget);
+        // Tap SIGN UP tab
+        await tester.tap(find.text('SIGN UP'));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(find.text('Confirm password'), findsOneWidget);
 
-          // 3. Dashboard Screen
-          navCubit.navigateTo(AppScreen.dashboardGrid);
-          await tester.pumpAndSettle();
-          expect(tester.takeException(), isNull);
-          expect(find.byIcon(Icons.music_note_rounded), findsWidgets);
+        // 3. Dashboard Screen
+        navCubit.navigateTo(AppScreen.dashboardGrid);
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(find.byIcon(Icons.music_note_rounded), findsWidgets);
 
-          // 4. Equalizer Screen
-          // 4. Equalizer Screen
-          navCubit.navigateTo(AppScreen.equalizer);
-          await tester.pumpAndSettle();
-          final errEq = tester.takeException();
-          if (errEq != null) {
-            // ignore: avoid_print
-            print('DEBUG OVERFLOW ON EQUALIZER: $errEq');
+        // 4. Equalizer Screen
+        // 4. Equalizer Screen
+        navCubit.navigateTo(AppScreen.equalizer);
+        await tester.pumpAndSettle();
+        final errEq = tester.takeException();
+        if (errEq != null) {
+          // ignore: avoid_print
+          print('DEBUG OVERFLOW ON EQUALIZER: $errEq');
+        }
+        expect(errEq, isNull, reason: 'EqualizerScreen overflowed');
+
+        // 5. Radio FM Screen
+        navCubit.navigateTo(AppScreen.radioFm);
+        await tester.pumpAndSettle();
+        final errRadio = tester.takeException();
+        if (errRadio is FlutterError) {
+          final buffer = StringBuffer();
+          for (final d in errRadio.diagnostics) {
+            buffer.writeln('${d.name}: ${d.toDescription()}');
           }
-          expect(errEq, isNull, reason: 'EqualizerScreen overflowed');
+          // ignore: avoid_print
+          print('DIAGNOSTICS_DUMP:\n$buffer');
+        }
+        expect(errRadio, isNull, reason: 'RadioFmScreen overflowed');
+        expect(find.text('Radio FM'), findsOneWidget);
 
-          // 5. Radio FM Screen
-          navCubit.navigateTo(AppScreen.radioFm);
-          await tester.pumpAndSettle();
-          final errRadio = tester.takeException();
-          if (errRadio is FlutterError) {
-            final buffer = StringBuffer();
-            for (final d in errRadio.diagnostics) {
-              buffer.writeln('${d.name}: ${d.toDescription()}');
-            }
-            // ignore: avoid_print
-            print('DIAGNOSTICS_DUMP:\n$buffer');
-          }
-          expect(errRadio, isNull, reason: 'RadioFmScreen overflowed');
-          expect(find.text('Radio FM'), findsOneWidget);
+        // 6. Voice Recorder Screen
+        navCubit.navigateTo(AppScreen.voiceRecorder);
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(find.byIcon(Icons.mic_rounded), findsWidgets);
 
-          // 6. Voice Recorder Screen
-          navCubit.navigateTo(AppScreen.voiceRecorder);
-          await tester.pumpAndSettle();
-          expect(tester.takeException(), isNull);
-          expect(find.byIcon(Icons.mic_rounded), findsWidgets);
+        // 7. Sound Settings Screen
+        navCubit.navigateTo(AppScreen.soundSettings);
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(find.text('LOREM COLOR'), findsOneWidget);
 
-          // 7. Sound Settings Screen
-          navCubit.navigateTo(AppScreen.soundSettings);
-          await tester.pumpAndSettle();
-          expect(tester.takeException(), isNull);
-          expect(find.text('LOREM COLOR'), findsOneWidget);
+        // 8. My Playlist Screen
+        navCubit.navigateTo(AppScreen.myPlaylist);
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(find.text('My Playlist'), findsOneWidget);
 
-          // 8. My Playlist Screen
-          navCubit.navigateTo(AppScreen.myPlaylist);
-          await tester.pumpAndSettle();
-          expect(tester.takeException(), isNull);
-          expect(find.text('My Playlist'), findsOneWidget);
+        // 9. Playlist Tracks Screen
+        navCubit.navigateTo(AppScreen.playlistTracks);
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
 
-          // 9. Playlist Tracks Screen
-          navCubit.navigateTo(AppScreen.playlistTracks);
-          await tester.pumpAndSettle();
-          expect(tester.takeException(), isNull);
+        // 10. Search Genres Screen
+        navCubit.navigateTo(AppScreen.searchGenres);
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
 
-          // 10. Search Genres Screen
-          navCubit.navigateTo(AppScreen.searchGenres);
-          await tester.pumpAndSettle();
-          expect(tester.takeException(), isNull);
+        // 11. Album Detail Screen
+        navCubit.navigateTo(AppScreen.albumDetail);
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(find.text('LOREM'), findsOneWidget);
 
-          // 11. Album Detail Screen
-          navCubit.navigateTo(AppScreen.albumDetail);
-          await tester.pumpAndSettle();
-          expect(tester.takeException(), isNull);
-          expect(find.text('LOREM'), findsOneWidget);
-
-          // 12. Profile Screen
-          navCubit.navigateTo(AppScreen.profile);
-          await tester.pumpAndSettle();
-          expect(tester.takeException(), isNull);
-          expect(find.text('Log out'), findsOneWidget);
-        },
-      );
+        // 12. Profile Screen
+        navCubit.navigateTo(AppScreen.profile);
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(find.text('Log out'), findsOneWidget);
+      });
     }
   });
 }

@@ -46,7 +46,9 @@ class WelcomeScreen extends StatelessWidget {
 
                       // Center graphic logo
                       Padding(
-                        padding: EdgeInsets.symmetric(vertical: context.h(0.02)),
+                        padding: EdgeInsets.symmetric(
+                          vertical: context.h(0.02),
+                        ),
                         child: Center(child: AppLogoWidget(size: logoSize)),
                       ),
 

@@ -25,6 +25,10 @@ Future<void> initDependencies() async {
     ),
   );
 
+  sl.registerLazySingleton<LocalAudioDataSource>(
+    () => LocalAudioDataSourceImpl(),
+  );
+
   // 2. Repositories
   sl.registerLazySingleton<SecurityAuditRepository>(
     () => SecurityAuditRepositoryImpl(auditLogger: sl<AuditLogger>()),
@@ -33,7 +37,9 @@ Future<void> initDependencies() async {
     () => AuthRepositoryImpl(secureDataSource: sl<SecureEncryptedDataSource>()),
   );
   sl.registerLazySingleton<AudioPlayerRepository>(
-    () => AudioPlayerRepositoryImpl(),
+    () => AudioPlayerRepositoryImpl(
+      localAudioDataSource: sl<LocalAudioDataSource>(),
+    ),
   );
   sl.registerLazySingleton<EqualizerRepository>(
     () => EqualizerRepositoryImpl(
@@ -97,6 +103,15 @@ Future<void> initDependencies() async {
   );
   sl.registerLazySingleton(
     () => ToggleSelectUseCase(sl<AudioPlayerRepository>()),
+  );
+  sl.registerLazySingleton(
+    () => CheckAudioPermissionsUseCase(sl<AudioPlayerRepository>()),
+  );
+  sl.registerLazySingleton(
+    () => RequestAudioPermissionsUseCase(sl<AudioPlayerRepository>()),
+  );
+  sl.registerLazySingleton(
+    () => ScanLocalTracksUseCase(sl<AudioPlayerRepository>()),
   );
 
   // Equalizer

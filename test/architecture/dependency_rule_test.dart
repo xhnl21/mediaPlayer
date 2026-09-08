@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -16,7 +17,8 @@ void main() {
           final path = entity.path.replaceAll(r'\', '/');
 
           // Check presentation, domain, and application layers
-          final isRestrictedLayer = path.contains('lib/presentation/') ||
+          final isRestrictedLayer =
+              path.contains('lib/presentation/') ||
               path.contains('lib/domain/') ||
               path.contains('lib/application/');
 
