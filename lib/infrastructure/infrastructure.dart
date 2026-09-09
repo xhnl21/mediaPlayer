@@ -10,6 +10,7 @@ export 'repositories/audio_player_repository_impl.dart';
 export 'repositories/auth_repository_impl.dart';
 export 'repositories/equalizer_repository_impl.dart';
 export 'repositories/favorites_repository_impl.dart';
+export 'repositories/player_preferences_repository_impl.dart';
 export 'repositories/radio_repository_impl.dart';
 export 'repositories/security_audit_repository_impl.dart';
 export 'repositories/settings_repository_impl.dart';

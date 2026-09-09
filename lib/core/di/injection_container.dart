@@ -99,6 +99,11 @@ Future<void> initDependencies({
   sl.registerLazySingleton<FavoritesRepository>(
     () => FavoritesRepositoryImpl(dataSource: sl<DriftFavoritesDataSource>()),
   );
+  sl.registerLazySingleton<PlayerPreferencesRepository>(
+    () => PlayerPreferencesRepositoryImpl(
+      secureDataSource: sl<SecureEncryptedDataSource>(),
+    ),
+  );
 
   // 3. Application Use Cases
   // Auth

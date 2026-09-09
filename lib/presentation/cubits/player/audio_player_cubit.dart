@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:media_player/application/player.dart';
 import 'package:media_player/domain/player.dart';
@@ -33,6 +34,9 @@ class AudioPlayerState extends Equatable {
     this.isShuffleEnabled = false,
     this.isSelectionMode = false,
     this.selectedTrackIds = const {},
+    this.highlightedTrackId,
+    this.initialScrollIndex,
+    this.hasRestoredSession = false,
   });
 
   final AudioPlayerStatus status;
@@ -51,6 +55,9 @@ class AudioPlayerState extends Equatable {
   final bool isShuffleEnabled;
   final bool isSelectionMode;
   final Set<String> selectedTrackIds;
+  final String? highlightedTrackId;
+  final int? initialScrollIndex;
+  final bool hasRestoredSession;
 
   bool isTrackSelected(String trackId) => selectedTrackIds.contains(trackId);
 
@@ -88,7 +95,12 @@ class AudioPlayerState extends Equatable {
     bool? isShuffleEnabled,
     bool? isSelectionMode,
     Set<String>? selectedTrackIds,
+    String? highlightedTrackId,
+    int? initialScrollIndex,
+    bool? hasRestoredSession,
     bool clearError = false,
+    bool clearHighlightedTrack = false,
+    bool clearInitialScroll = false,
   }) {
     return AudioPlayerState(
       status: status ?? this.status,
@@ -107,6 +119,13 @@ class AudioPlayerState extends Equatable {
       isShuffleEnabled: isShuffleEnabled ?? this.isShuffleEnabled,
       isSelectionMode: isSelectionMode ?? this.isSelectionMode,
       selectedTrackIds: selectedTrackIds ?? this.selectedTrackIds,
+      highlightedTrackId: clearHighlightedTrack
+          ? null
+          : (highlightedTrackId ?? this.highlightedTrackId),
+      initialScrollIndex: clearInitialScroll
+          ? null
+          : (initialScrollIndex ?? this.initialScrollIndex),
+      hasRestoredSession: hasRestoredSession ?? this.hasRestoredSession,
     );
   }
 
@@ -128,6 +147,9 @@ class AudioPlayerState extends Equatable {
     isShuffleEnabled,
     isSelectionMode,
     selectedTrackIds,
+    highlightedTrackId,
+    initialScrollIndex,
+    hasRestoredSession,
   ];
 }
 
@@ -144,6 +166,7 @@ class AudioPlayerCubit extends Cubit<AudioPlayerState> {
     required this.getTracksUseCase,
     required this.toggleFavoriteUseCase,
     required this.toggleSelectUseCase,
+    this.preferencesRepository,
     CheckAudioPermissionsUseCase? checkAudioPermissionsUseCase,
     RequestAudioPermissionsUseCase? requestAudioPermissionsUseCase,
     ScanLocalTracksUseCase? scanLocalTracksUseCase,
@@ -184,6 +207,7 @@ class AudioPlayerCubit extends Cubit<AudioPlayerState> {
   final GetTracksUseCase getTracksUseCase;
   final ToggleFavoriteUseCase toggleFavoriteUseCase;
   final ToggleSelectUseCase toggleSelectUseCase;
+  final PlayerPreferencesRepository? preferencesRepository;
   final CheckAudioPermissionsUseCase checkAudioPermissionsUseCase;
   final RequestAudioPermissionsUseCase requestAudioPermissionsUseCase;
   final ScanLocalTracksUseCase scanLocalTracksUseCase;
@@ -220,7 +244,12 @@ class AudioPlayerCubit extends Cubit<AudioPlayerState> {
     });
 
     _trackSub = audioPlayerRepository.currentTrackStream.listen((track) {
-      emit(state.copyWith(currentTrack: track));
+      emit(
+        state.copyWith(
+          currentTrack: track,
+          highlightedTrackId: track?.id ?? state.highlightedTrackId,
+        ),
+      );
     });
 
     _repeatModeSub = audioPlayerRepository.repeatModeStream.listen((mode) {
@@ -243,9 +272,29 @@ class AudioPlayerCubit extends Cubit<AudioPlayerState> {
   }
 
   Future<void> loadInitialData() async {
+    // 1. Load persisted preferences safely
+    var savedRepeat = AudioRepeatMode.off;
+    var savedShuffle = false;
+    LastSessionContext? lastSession;
+
+    if (preferencesRepository != null) {
+      try {
+        savedRepeat = await preferencesRepository!.getRepeatMode();
+        savedShuffle = await preferencesRepository!.isShuffleEnabled();
+        lastSession = await preferencesRepository!.getLastTrack();
+      } catch (e) {
+        debugPrint('AudioPlayerCubit: Failed loading preferences: $e');
+      }
+    }
+
+    // 2. Sync underlying audio player repository
+    unawaited(audioPlayerRepository.setRepeatMode(savedRepeat));
+    unawaited(audioPlayerRepository.setShuffle(savedShuffle));
+
     final playlists = await getPlaylistsUseCase.execute();
     final hasPermission = await checkAudioPermissionsUseCase.execute();
 
+    List<Track> loadedTracks;
     if (hasPermission) {
       emit(
         state.copyWith(
@@ -253,32 +302,80 @@ class AudioPlayerCubit extends Cubit<AudioPlayerState> {
           isLoadingTracks: true,
           playlists: playlists,
           selectedPlaylist: playlists.isNotEmpty ? playlists.first : null,
+          repeatMode: savedRepeat,
+          isShuffleEnabled: savedShuffle,
         ),
       );
-      final tracks = await scanLocalTracksUseCase.execute();
-      emit(
-        state.copyWith(
-          tracks: tracks,
-          isLoadingTracks: false,
-          hasScannedDevice: true,
-          currentTrack:
-              state.currentTrack ?? (tracks.isNotEmpty ? tracks.first : null),
-        ),
-      );
+      loadedTracks = await scanLocalTracksUseCase.execute();
     } else {
-      final initialTracks = await getTracksUseCase.execute();
+      loadedTracks = await getTracksUseCase.execute();
       emit(
         state.copyWith(
           permissionStatus: AudioPermissionStatus.denied,
-          tracks: initialTracks,
+          tracks: loadedTracks,
           playlists: playlists,
-          currentTrack:
-              state.currentTrack ??
-              (initialTracks.isNotEmpty ? initialTracks.first : null),
           selectedPlaylist: playlists.isNotEmpty ? playlists.first : null,
+          repeatMode: savedRepeat,
+          isShuffleEnabled: savedShuffle,
         ),
       );
     }
+
+    // 3. Reconstruct session track context without auto-playing
+    Track? restoredTrack;
+    int? restoredScrollIndex;
+    String? restoredHighlightedId;
+    var restoredPosition = Duration.zero;
+    var restoredDuration = Duration.zero;
+
+    if (lastSession != null) {
+      final matchedIndex = loadedTracks.indexWhere(
+        (t) => t.id == lastSession!.trackId,
+      );
+      if (matchedIndex != -1) {
+        restoredTrack = loadedTracks[matchedIndex];
+        restoredScrollIndex = matchedIndex;
+      } else {
+        restoredTrack = Track(
+          id: lastSession.trackId,
+          title: lastSession.title,
+          artist: lastSession.artist,
+          album: lastSession.album,
+          duration: lastSession.duration,
+          audioUrl: lastSession.audioUrl,
+        );
+        restoredScrollIndex = lastSession.index.clamp(
+          0,
+          loadedTracks.isNotEmpty ? loadedTracks.length - 1 : 0,
+        );
+      }
+      restoredHighlightedId = restoredTrack.id;
+      restoredPosition = lastSession.position;
+      restoredDuration = restoredTrack.duration;
+    } else if (loadedTracks.isNotEmpty) {
+      restoredTrack = loadedTracks.first;
+      restoredScrollIndex = 0;
+      restoredDuration = restoredTrack.duration;
+      restoredHighlightedId = restoredTrack.id;
+    }
+
+    emit(
+      state.copyWith(
+        tracks: loadedTracks,
+        isLoadingTracks: false,
+        hasScannedDevice: hasPermission,
+        currentTrack: state.currentTrack ?? restoredTrack,
+        position: restoredPosition,
+        duration: restoredDuration,
+        repeatMode: savedRepeat,
+        isShuffleEnabled: savedShuffle,
+        highlightedTrackId: restoredHighlightedId,
+        initialScrollIndex: restoredScrollIndex,
+        hasRestoredSession: true,
+        isPlaying: false,
+        status: AudioPlayerStatus.paused,
+      ),
+    );
   }
 
   Future<void> requestPermissionsAndScan() async {
@@ -293,15 +390,17 @@ class AudioPlayerCubit extends Cubit<AudioPlayerState> {
     final granted = await requestAudioPermissionsUseCase.execute();
     if (granted) {
       final localTracks = await scanLocalTracksUseCase.execute();
+      Track? current = state.currentTrack;
+      if (current == null && localTracks.isNotEmpty) {
+        current = localTracks.first;
+      }
       emit(
         state.copyWith(
           permissionStatus: AudioPermissionStatus.granted,
           tracks: localTracks,
           isLoadingTracks: false,
           hasScannedDevice: true,
-          currentTrack:
-              state.currentTrack ??
-              (localTracks.isNotEmpty ? localTracks.first : null),
+          currentTrack: current,
         ),
       );
     } else {
@@ -341,13 +440,25 @@ class AudioPlayerCubit extends Cubit<AudioPlayerState> {
   }
 
   Future<void> playTrack(Track track) async {
+    final trackIndex = state.tracks.indexWhere((t) => t.id == track.id);
+    final idx = trackIndex >= 0 ? trackIndex : 0;
+
+    // Persist immediately
+    if (preferencesRepository != null) {
+      unawaited(
+        preferencesRepository!.saveLastTrack(track, idx, Duration.zero),
+      );
+    }
+
     emit(
       state.copyWith(
         status: AudioPlayerStatus.loading,
         currentTrack: track,
+        highlightedTrackId: track.id,
         clearError: true,
       ),
     );
+
     try {
       await playTrackUseCase.execute(track);
       emit(
@@ -355,6 +466,7 @@ class AudioPlayerCubit extends Cubit<AudioPlayerState> {
           isPlaying: true,
           status: AudioPlayerStatus.playing,
           currentTrack: track,
+          highlightedTrackId: track.id,
         ),
       );
     } catch (e) {
@@ -372,6 +484,20 @@ class AudioPlayerCubit extends Cubit<AudioPlayerState> {
     if (state.isPlaying) {
       await pauseTrackUseCase.execute();
       emit(state.copyWith(isPlaying: false, status: AudioPlayerStatus.paused));
+
+      // Persist current track & playback position upon pause
+      if (state.currentTrack != null && preferencesRepository != null) {
+        final idx = state.tracks.indexWhere(
+          (t) => t.id == state.currentTrack!.id,
+        );
+        unawaited(
+          preferencesRepository!.saveLastTrack(
+            state.currentTrack!,
+            idx >= 0 ? idx : 0,
+            state.position,
+          ),
+        );
+      }
     } else {
       await resumeTrackUseCase.execute();
       emit(state.copyWith(isPlaying: true, status: AudioPlayerStatus.playing));
@@ -381,6 +507,19 @@ class AudioPlayerCubit extends Cubit<AudioPlayerState> {
   Future<void> seek(Duration position) async {
     await seekTrackUseCase.execute(position);
     emit(state.copyWith(position: position));
+
+    if (state.currentTrack != null && preferencesRepository != null) {
+      final idx = state.tracks.indexWhere(
+        (t) => t.id == state.currentTrack!.id,
+      );
+      unawaited(
+        preferencesRepository!.saveLastTrack(
+          state.currentTrack!,
+          idx >= 0 ? idx : 0,
+          position,
+        ),
+      );
+    }
   }
 
   Future<void> next() async {
@@ -401,17 +540,43 @@ class AudioPlayerCubit extends Cubit<AudioPlayerState> {
     final nextMode = state.repeatMode.next;
     await setRepeatModeUseCase.execute(nextMode);
     emit(state.copyWith(repeatMode: nextMode));
+    if (preferencesRepository != null) {
+      unawaited(preferencesRepository!.saveRepeatMode(nextMode));
+    }
   }
 
   Future<void> setRepeatMode(AudioRepeatMode mode) async {
     await setRepeatModeUseCase.execute(mode);
     emit(state.copyWith(repeatMode: mode));
+    if (preferencesRepository != null) {
+      unawaited(preferencesRepository!.saveRepeatMode(mode));
+    }
   }
 
   Future<void> toggleShuffle() async {
     final newShuffle = !state.isShuffleEnabled;
     await setShuffleModeUseCase.execute(newShuffle);
     emit(state.copyWith(isShuffleEnabled: newShuffle));
+    if (preferencesRepository != null) {
+      unawaited(preferencesRepository!.saveShuffleEnabled(newShuffle));
+    }
+  }
+
+  Future<void> saveSessionSnapshot() async {
+    if (state.currentTrack != null && preferencesRepository != null) {
+      final idx = state.tracks.indexWhere(
+        (t) => t.id == state.currentTrack!.id,
+      );
+      await preferencesRepository!.saveLastTrack(
+        state.currentTrack!,
+        idx >= 0 ? idx : 0,
+        state.position,
+      );
+    }
+  }
+
+  void clearInitialScroll() {
+    emit(state.copyWith(clearInitialScroll: true));
   }
 
   Future<void> removeTrack(

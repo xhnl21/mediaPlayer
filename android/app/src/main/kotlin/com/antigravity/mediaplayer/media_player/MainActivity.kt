@@ -8,11 +8,14 @@ import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import com.ryanheise.audioservice.AudioServiceActivity
+import io.flutter.embedding.android.RenderMode
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
 
 class MainActivity : AudioServiceActivity() {
+    override fun getRenderMode(): RenderMode = RenderMode.texture
+
     private val CHANNEL = "com.antigravity.mediaplayer/device_audio"
     private var pendingDeleteResult: MethodChannel.Result? = null
     private var pendingPathsToScan: List<String>? = null

@@ -5,8 +5,80 @@ import 'package:media_player/core/core.dart';
 import 'package:media_player/domain/domain.dart';
 import 'package:media_player/presentation/presentation.dart';
 
+class _AppLifecycleObserver with WidgetsBindingObserver {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Force pipeline refresh on return from lockscreen/background
+      WidgetsBinding.instance.scheduleFrame();
+    }
+  }
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Lifecycle observer to prevent UI lock/black screens on resume
+  WidgetsBinding.instance.addObserver(_AppLifecycleObserver());
+
+  // Global safe error handling to prevent black screen on uncaught build errors
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    debugPrint('FlutterError caught: ${details.exceptionAsString()}');
+  };
+
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    return Material(
+      color: AppColors.background,
+      child: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.warning_amber_rounded,
+                  color: AppColors.accentCoral,
+                  size: 56,
+                ),
+                const SizedBox(height: 16),
+                const Texts(
+                  'Algo salió mal en la interfaz',
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textLight,
+                ),
+                const SizedBox(height: 8),
+                const Texts(
+                  'La aplicación se ha recuperado para evitar cierres inesperados.',
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accentCoral,
+                    foregroundColor: AppColors.textLight,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('REINTENTAR'),
+                  onPressed: () {
+                    WidgetsBinding.instance.scheduleFrame();
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  };
+
   await initDependencies();
   runApp(const MediaPlayerApp());
 }
@@ -40,6 +112,7 @@ class MediaPlayerApp extends StatelessWidget {
             getTracksUseCase: sl<GetTracksUseCase>(),
             toggleFavoriteUseCase: sl<ToggleFavoriteUseCase>(),
             toggleSelectUseCase: sl<ToggleSelectUseCase>(),
+            preferencesRepository: sl<PlayerPreferencesRepository>(),
             checkAudioPermissionsUseCase: sl<CheckAudioPermissionsUseCase>(),
             requestAudioPermissionsUseCase:
                 sl<RequestAudioPermissionsUseCase>(),
