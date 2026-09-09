@@ -59,12 +59,12 @@ class MyPlaylistScreen extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
+                              Texts(
                                 'My Playlist',
-                                style: AppTypography.titleLarge.copyWith(
-                                  fontSize: context.sp(19),
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                style: AppTypography.titleLarge,
+                                fontSize: context.sp(19),
+                                fontWeight: FontWeight.bold,
+                                fittedBox: true,
                               ),
                               SizedBox(
                                 height: context.h(0.005).clamp(2.0, 6.0),
@@ -157,87 +157,140 @@ class MyPlaylistScreen extends StatelessWidget {
             Expanded(
               child: BlocBuilder<AudioPlayerCubit, AudioPlayerState>(
                 builder: (context, state) {
-                  return ListView.separated(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: horizontalPadding,
-                      vertical: context.h(0.008).clamp(4.0, 10.0),
-                    ),
-                    itemCount: state.tracks.length,
-                    separatorBuilder: (_, index) =>
-                        SizedBox(height: context.h(0.01).clamp(6.0, 12.0)),
-                    itemBuilder: (context, index) {
-                      final track = state.tracks[index];
-                      return Container(
-                        height: rowHeight,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: context.w(0.03).clamp(8.0, 16.0),
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.cardSurface.withValues(alpha: 0.6),
-                          borderRadius: BorderRadius.circular(rowHeight / 2),
-                        ),
-                        child: Row(
-                          children: [
-                            GestureDetector(
-                              onTap: () => context
-                                  .read<AudioPlayerCubit>()
-                                  .toggleSelect(track.id),
-                              child: Container(
-                                width: checkCircleSize,
-                                height: checkCircleSize,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: track.isSelected
-                                      ? AppColors.textLight
-                                      : Colors.transparent,
-                                  // Justified exception: 1.5 circle stroke
-                                  border: Border.all(
-                                    color: AppColors.textLight,
+                  return RepaintBoundary(
+                    child: ListView.separated(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: horizontalPadding,
+                        vertical: context.h(0.008).clamp(4.0, 10.0),
+                      ),
+                      itemCount: state.tracks.length,
+                      separatorBuilder: (_, index) =>
+                          SizedBox(height: context.h(0.01).clamp(6.0, 12.0)),
+                      itemBuilder: (context, index) {
+                        final track = state.tracks[index];
+                        final isCurrentPlaying =
+                            state.isPlaying &&
+                            state.currentTrack?.id == track.id;
+                        final isHighlighted =
+                            (state.highlightedTrackId != null &&
+                                state.highlightedTrackId == track.id) ||
+                            (!state.isPlaying &&
+                                state.currentTrack?.id == track.id);
+
+                        return Container(
+                          constraints: BoxConstraints(minHeight: rowHeight),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: context.w(0.03).clamp(8.0, 16.0),
+                            vertical: context.h(0.006).clamp(4.0, 8.0),
+                          ),
+                          decoration: BoxDecoration(
+                            color: isCurrentPlaying
+                                ? AppColors.cardSurfaceLight
+                                : (isHighlighted
+                                      ? AppColors.accentCoral.withValues(
+                                          alpha: 0.12,
+                                        )
+                                      : AppColors.cardSurface.withValues(
+                                          alpha: 0.6,
+                                        )),
+                            borderRadius: BorderRadius.circular(rowHeight / 2),
+                            border: isHighlighted
+                                ? Border.all(
+                                    color: AppColors.accentCoral.withValues(
+                                      alpha: 0.6,
+                                    ),
                                     width: 1.5,
+                                  )
+                                : null,
+                          ),
+                          child: Row(
+                            children: [
+                              GestureDetector(
+                                onTap: () => context
+                                    .read<AudioPlayerCubit>()
+                                    .toggleSelect(track.id),
+                                child: Container(
+                                  width: checkCircleSize,
+                                  height: checkCircleSize,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: track.isSelected
+                                        ? AppColors.textLight
+                                        : Colors.transparent,
+                                    // Justified exception: 1.5 circle stroke
+                                    border: Border.all(
+                                      color: AppColors.textLight,
+                                      width: 1.5,
+                                    ),
                                   ),
+                                  child: track.isSelected
+                                      ? Icon(
+                                          Icons.check,
+                                          size: context.iconSize(15),
+                                          color: AppColors.primaryTealDark,
+                                        )
+                                      : null,
                                 ),
-                                child: track.isSelected
-                                    ? Icon(
-                                        Icons.check,
-                                        size: context.iconSize(15),
-                                        color: AppColors.primaryTealDark,
-                                      )
-                                    : null,
                               ),
-                            ),
-                            SizedBox(width: context.w(0.03).clamp(8.0, 16.0)),
-                            Expanded(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    track.title,
-                                    style: AppTypography.titleMedium.copyWith(
+                              SizedBox(
+                                width: context.w(0.035).clamp(8.0, 16.0),
+                              ),
+                              Expanded(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Texts(
+                                      track.title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AppTypography.titleMedium,
                                       fontSize: context.sp(13),
+                                      fontWeight:
+                                          isCurrentPlaying || isHighlighted
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                      fittedBox: true,
                                     ),
-                                  ),
-                                  Text(
-                                    track.artist,
-                                    style: AppTypography.bodySmall.copyWith(
+                                    const SizedBox(height: 2),
+                                    Texts(
+                                      track.artist,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AppTypography.bodySmall,
                                       fontSize: context.sp(11),
+                                      fittedBox: true,
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                            IconButton(
-                              icon: Icon(
-                                Icons.shopping_cart_outlined,
-                                color: AppColors.textLight,
-                                size: context.iconSize(19),
+                              IconButton(
+                                icon: Icon(
+                                  isCurrentPlaying
+                                      ? Icons.pause_circle_filled_rounded
+                                      : Icons.play_circle_fill_rounded,
+                                  color: AppColors.accentCoral,
+                                  size: context.iconSize(22),
+                                ),
+                                tooltip: 'Play track',
+                                onPressed: () {
+                                  if (isCurrentPlaying) {
+                                    context
+                                        .read<AudioPlayerCubit>()
+                                        .togglePlayPause();
+                                  } else {
+                                    context.read<AudioPlayerCubit>().playTrack(
+                                      track,
+                                    );
+                                  }
+                                },
                               ),
-                              onPressed: () {},
-                            ),
-                          ],
-                        ),
-                      );
-                    },
+                            ],
+                          ),
+                        );
+                      },
+                    ),
                   );
                 },
               ),

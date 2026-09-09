@@ -15,9 +15,11 @@ class PlaylistTracksScreen extends StatefulWidget {
 
 class _PlaylistTracksScreenState extends State<PlaylistTracksScreen> {
   final ValueNotifier<int> _selectedTabNotifier = ValueNotifier<int>(0);
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _selectedTabNotifier.dispose();
     super.dispose();
   }
@@ -31,6 +33,28 @@ class _PlaylistTracksScreenState extends State<PlaylistTracksScreen> {
       body: SafeArea(
         child: BlocConsumer<AudioPlayerCubit, AudioPlayerState>(
           listener: (context, state) {
+            // Auto-scroll to restored track from previous session
+            if (state.initialScrollIndex != null &&
+                state.initialScrollIndex! > 0 &&
+                state.tracks.isNotEmpty) {
+              final targetIndex = state.initialScrollIndex!;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (_scrollController.hasClients) {
+                  final rowHeight = context.h(0.064).clamp(48.0, 60.0);
+                  final sepHeight = context.h(0.012).clamp(6.0, 14.0);
+                  final itemExtent = rowHeight + sepHeight;
+                  final targetOffset = targetIndex * itemExtent;
+                  final maxOffset = _scrollController.position.maxScrollExtent;
+                  _scrollController.animateTo(
+                    targetOffset.clamp(0.0, maxOffset),
+                    duration: const Duration(milliseconds: 600),
+                    curve: Curves.easeInOut,
+                  );
+                }
+                context.read<AudioPlayerCubit>().clearInitialScroll();
+              });
+            }
+
             if (state.errorMessage != null) {
               ScaffoldMessenger.of(context).hideCurrentSnackBar();
               ScaffoldMessenger.of(context).showSnackBar(
@@ -489,51 +513,62 @@ class _PlaylistTracksScreenState extends State<PlaylistTracksScreen> {
       );
     }
 
-    return RefreshIndicator(
-      color: AppColors.accentCoral,
-      backgroundColor: AppColors.cardSurface,
-      onRefresh: () async {
-        await context.read<AudioPlayerCubit>().refreshLibrary();
-      },
-      child: ListView.separated(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.symmetric(
-          horizontal: horizontalPadding,
-          vertical: context.h(0.01).clamp(6.0, 14.0),
-        ),
-        itemCount: playerState.tracks.length,
-        separatorBuilder: (_, index) =>
-            SizedBox(height: context.h(0.012).clamp(6.0, 14.0)),
-        itemBuilder: (context, index) {
-          final track = playerState.tracks[index];
-          final isCurrentPlaying = playerState.currentTrack?.id == track.id;
-          final isFavorite = favState.isFavorite(track.id);
-          final isSelected = playerState.isTrackSelected(track.id);
-
-          return _TrackItemRow(
-            track: track,
-            isPlaying: isCurrentPlaying,
-            isFavorite: isFavorite,
-            isSelected: isSelected,
-            isSelectionMode: playerState.isSelectionMode,
-            onTap: () {
-              if (playerState.isSelectionMode) {
-                context.read<AudioPlayerCubit>().toggleSelect(track.id);
-              } else {
-                context.read<AudioPlayerCubit>().playTrack(track);
-              }
-            },
-            onToggleSelect: () {
-              context.read<AudioPlayerCubit>().toggleSelect(track.id);
-            },
-            onToggleFavorite: () {
-              context.read<FavoritesCubit>().toggleFavorite(track);
-            },
-            onDelete: () {
-              _confirmSingleDelete(context, track);
-            },
-          );
+    return RepaintBoundary(
+      child: RefreshIndicator(
+        color: AppColors.accentCoral,
+        backgroundColor: AppColors.cardSurface,
+        onRefresh: () async {
+          await context.read<AudioPlayerCubit>().refreshLibrary();
         },
+        child: ListView.separated(
+          controller: _scrollController,
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.symmetric(
+            horizontal: horizontalPadding,
+            vertical: context.h(0.01).clamp(6.0, 14.0),
+          ),
+          itemCount: playerState.tracks.length,
+          separatorBuilder: (_, index) =>
+              SizedBox(height: context.h(0.012).clamp(6.0, 14.0)),
+          itemBuilder: (context, index) {
+            final track = playerState.tracks[index];
+            final isCurrentPlaying =
+                playerState.isPlaying &&
+                playerState.currentTrack?.id == track.id;
+            final isHighlighted =
+                (playerState.highlightedTrackId != null &&
+                    playerState.highlightedTrackId == track.id) ||
+                (!playerState.isPlaying &&
+                    playerState.currentTrack?.id == track.id);
+            final isFavorite = favState.isFavorite(track.id);
+            final isSelected = playerState.isTrackSelected(track.id);
+
+            return _TrackItemRow(
+              track: track,
+              isPlaying: isCurrentPlaying,
+              isHighlighted: isHighlighted,
+              isFavorite: isFavorite,
+              isSelected: isSelected,
+              isSelectionMode: playerState.isSelectionMode,
+              onTap: () {
+                if (playerState.isSelectionMode) {
+                  context.read<AudioPlayerCubit>().toggleSelect(track.id);
+                } else {
+                  context.read<AudioPlayerCubit>().playTrack(track);
+                }
+              },
+              onToggleSelect: () {
+                context.read<AudioPlayerCubit>().toggleSelect(track.id);
+              },
+              onToggleFavorite: () {
+                context.read<FavoritesCubit>().toggleFavorite(track);
+              },
+              onDelete: () {
+                _confirmSingleDelete(context, track);
+              },
+            );
+          },
+        ),
       ),
     );
   }
@@ -600,11 +635,18 @@ class _PlaylistTracksScreenState extends State<PlaylistTracksScreen> {
           duration: fav.duration,
           audioUrl: fav.audioUrl,
         );
-        final isCurrentPlaying = playerState.currentTrack?.id == track.id;
+        final isCurrentPlaying =
+            playerState.isPlaying && playerState.currentTrack?.id == track.id;
+        final isHighlighted =
+            (playerState.highlightedTrackId != null &&
+                playerState.highlightedTrackId == track.id) ||
+            (!playerState.isPlaying &&
+                playerState.currentTrack?.id == track.id);
 
         return _TrackItemRow(
           track: track,
           isPlaying: isCurrentPlaying,
+          isHighlighted: isHighlighted,
           isFavorite: true,
           isSelected: false,
           isSelectionMode: false,
@@ -1019,10 +1061,12 @@ class _TrackItemRow extends StatelessWidget {
     required this.onToggleSelect,
     required this.onToggleFavorite,
     required this.onDelete,
+    this.isHighlighted = false,
   });
 
   final Track track;
   final bool isPlaying;
+  final bool isHighlighted;
   final bool isFavorite;
   final bool isSelected;
   final bool isSelectionMode;
@@ -1040,15 +1084,24 @@ class _TrackItemRow extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(rowHeight / 2),
       child: Container(
-        height: rowHeight,
+        constraints: BoxConstraints(minHeight: rowHeight),
         padding: EdgeInsets.symmetric(
           horizontal: context.w(0.035).clamp(10.0, 18.0),
+          vertical: context.h(0.006).clamp(4.0, 8.0),
         ),
         decoration: BoxDecoration(
           color: isPlaying
               ? AppColors.cardSurfaceLight
-              : AppColors.cardSurface.withValues(alpha: 0.7),
+              : (isHighlighted
+                    ? AppColors.accentCoral.withValues(alpha: 0.12)
+                    : AppColors.cardSurface.withValues(alpha: 0.7)),
           borderRadius: BorderRadius.circular(rowHeight / 2),
+          border: isHighlighted
+              ? Border.all(
+                  color: AppColors.accentCoral.withValues(alpha: 0.6),
+                  width: 1.5,
+                )
+              : null,
         ),
         child: Row(
           children: [
@@ -1086,26 +1139,27 @@ class _TrackItemRow extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
+                  Texts(
                     track.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTypography.titleMedium.copyWith(
-                      color: AppColors.textLight,
-                      fontSize: context.sp(14),
-                      fontWeight: isPlaying ? FontWeight.bold : FontWeight.w600,
-                    ),
+                    style: AppTypography.titleMedium,
+                    color: AppColors.textLight,
+                    fontSize: context.sp(14),
+                    fontWeight: isPlaying ? FontWeight.bold : FontWeight.w600,
+                    fittedBox: true,
                   ),
                   SizedBox(height: context.h(0.003).clamp(1.0, 4.0)),
-                  Text(
+                  Texts(
                     '${track.artist}${track.album.isNotEmpty ? " • ${track.album}" : ""} • ${track.formattedDuration}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
-                      fontSize: context.sp(11),
-                    ),
+                    style: AppTypography.bodySmall,
+                    color: AppColors.textSecondary,
+                    fontSize: context.sp(11),
+                    fittedBox: true,
                   ),
                 ],
               ),

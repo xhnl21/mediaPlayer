@@ -1,3 +1,7 @@
+import 'dart:io';
+
+import 'package:audio_service/audio_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:media_player/application/application.dart';
 import 'package:media_player/core/security/aes_encryption_service.dart';
@@ -8,8 +12,38 @@ import 'package:media_player/infrastructure/infrastructure.dart';
 
 final sl = GetIt.instance;
 
-Future<void> initDependencies() async {
-  // 1. Core Security & Infrastructure
+Future<void> initDependencies({
+  AudioPlayerHandlerImpl? audioHandler,
+  bool enableBackgroundService = true,
+}) async {
+  // 1. Audio Service & Background Playback Handler
+  AudioPlayerHandlerImpl? handler = audioHandler;
+  final isTest = Platform.environment.containsKey('FLUTTER_TEST');
+
+  if (handler == null && enableBackgroundService && !isTest) {
+    try {
+      handler = await AudioService.init<AudioPlayerHandlerImpl>(
+        builder: () => AudioPlayerHandlerImpl(),
+        config: const AudioServiceConfig(
+          androidNotificationChannelId:
+              'com.antigravity.mediaplayer.channel.audio',
+          androidNotificationChannelName: 'Media Player Audio Playback',
+          androidNotificationOngoing: true,
+          androidStopForegroundOnPause: true,
+          androidNotificationIcon: 'mipmap/ic_launcher',
+          androidShowNotificationBadge: true,
+        ),
+      );
+    } catch (e) {
+      debugPrint('AudioService.init skipped or unavailable: $e');
+    }
+  }
+
+  if (handler != null && !sl.isRegistered<AudioPlayerHandlerImpl>()) {
+    sl.registerSingleton<AudioPlayerHandlerImpl>(handler);
+  }
+
+  // 2. Core Security & Infrastructure
   sl.registerLazySingleton<AesEncryptionService>(() => AesEncryptionService());
   sl.registerLazySingleton<SecureStorageService>(() => SecureStorageService());
   sl.registerLazySingleton<AuditLogger>(
@@ -33,7 +67,7 @@ Future<void> initDependencies() async {
     () => DriftFavoritesDataSourceImpl(sl<AppDatabase>()),
   );
 
-  // 2. Repositories
+  // 3. Repositories
   sl.registerLazySingleton<SecurityAuditRepository>(
     () => SecurityAuditRepositoryImpl(auditLogger: sl<AuditLogger>()),
   );
@@ -42,6 +76,9 @@ Future<void> initDependencies() async {
   );
   sl.registerLazySingleton<AudioPlayerRepository>(
     () => AudioPlayerRepositoryImpl(
+      audioHandler: sl.isRegistered<AudioPlayerHandlerImpl>()
+          ? sl<AudioPlayerHandlerImpl>()
+          : null,
       localAudioDataSource: sl<LocalAudioDataSource>(),
     ),
   );
@@ -61,6 +98,11 @@ Future<void> initDependencies() async {
   );
   sl.registerLazySingleton<FavoritesRepository>(
     () => FavoritesRepositoryImpl(dataSource: sl<DriftFavoritesDataSource>()),
+  );
+  sl.registerLazySingleton<PlayerPreferencesRepository>(
+    () => PlayerPreferencesRepositoryImpl(
+      secureDataSource: sl<SecureEncryptedDataSource>(),
+    ),
   );
 
   // 3. Application Use Cases

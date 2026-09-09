@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:media_player/application/application.dart';
+import 'package:media_player/core/core.dart';
 import 'package:media_player/domain/player.dart';
 import 'package:media_player/infrastructure/datasources/database/app_database.dart';
 import 'package:media_player/infrastructure/datasources/database/drift_favorites_data_source.dart';
@@ -262,6 +263,38 @@ void main() {
         expect(playerCubit.state.tracks.any((t) => t.id == firstId), isFalse);
         expect(playerCubit.state.tracks.any((t) => t.id == secondId), isFalse);
         expect(playerCubit.state.isSelectionMode, isFalse);
+      },
+    );
+
+    testWidgets(
+      'Persisted track session is highlighted with accent border and background',
+      (tester) async {
+        final firstTrack = playerCubit.state.tracks.first;
+        // Simulate restored session track without playing
+        playerCubit.emit(
+          playerCubit.state.copyWith(
+            currentTrack: firstTrack,
+            highlightedTrackId: firstTrack.id,
+            isPlaying: false,
+            repeatMode: AudioRepeatMode.all,
+            isShuffleEnabled: true,
+          ),
+        );
+
+        await tester.pumpWidget(createTestWidget());
+        await tester.pumpAndSettle();
+
+        // Verify shuffle icon has active color
+        final shuffleIcon = tester.widget<Icon>(
+          find.byIcon(Icons.shuffle_rounded),
+        );
+        expect(shuffleIcon.color, AppColors.accentCoral);
+
+        // Verify repeat mode icon is all_inclusive
+        expect(find.byIcon(Icons.all_inclusive_rounded), findsOneWidget);
+
+        // Verify title of highlighted track exists
+        expect(find.text(firstTrack.title), findsWidgets);
       },
     );
   });

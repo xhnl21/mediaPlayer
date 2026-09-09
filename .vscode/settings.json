@@ -1,11 +1,14 @@
 {
     "cSpell.words": [
         "allprojects",
+        "BROWSABLE",
         "buildlog",
         "jvmargs",
         "mediaplayer",
         "Metaspace",
         "pubspec",
+        "rescan",
+        "rescans",
         "swiftpm",
         "Symbolication"
     ]

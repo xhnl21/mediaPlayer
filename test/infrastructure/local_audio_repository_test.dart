@@ -23,6 +23,23 @@ class MockLocalAudioDataSource implements LocalAudioDataSource {
 
   @override
   Future<List<Track>> queryTracks() async => tracksToReturn;
+
+  final List<String> deletedAudioUrls = [];
+
+  @override
+  Future<bool> deletePhysicalTrack({
+    required String audioUrl,
+    required String trackId,
+  }) async {
+    deletedAudioUrls.add(audioUrl);
+    return true;
+  }
+
+  @override
+  Future<bool> deletePhysicalTracks(List<Track> tracks) async {
+    deletedAudioUrls.addAll(tracks.map((t) => t.audioUrl));
+    return true;
+  }
 }
 
 void main() {
@@ -78,6 +95,72 @@ void main() {
         repo.dispose();
       },
     );
+
+    test('AudioPlayerRepositoryImpl delegates physical deletion to LocalAudioDataSource', () async {
+      const sampleTrack = Track(
+        id: 'del_local_1',
+        title: 'Delete Test Track',
+        artist: 'Sample Artist',
+        duration: Duration(minutes: 3),
+        audioUrl: '/storage/emulated/0/Music/to_delete.mp3',
+      );
+
+      final mockDataSource = MockLocalAudioDataSource(
+        hasPermission: true,
+        tracksToReturn: [sampleTrack],
+      );
+      final repo = AudioPlayerRepositoryImpl(
+        localAudioDataSource: mockDataSource,
+        initialTracks: [sampleTrack],
+      );
+
+      expect(mockDataSource.deletedAudioUrls, isEmpty);
+
+      await repo.removeTrack(sampleTrack.id, deleteFromDevice: true);
+
+      expect(mockDataSource.deletedAudioUrls, contains(sampleTrack.audioUrl));
+      final remaining = await repo.getTracks();
+      expect(remaining.any((t) => t.id == sampleTrack.id), isFalse);
+
+      repo.dispose();
+    });
+
+    test('AudioPlayerRepositoryImpl delegates batch physical deletion to LocalAudioDataSource in a single call', () async {
+      const track1 = Track(
+        id: 'batch_1',
+        title: 'Batch 1',
+        artist: 'Artist 1',
+        duration: Duration(minutes: 2),
+        audioUrl: '/storage/music/track1.mp3',
+      );
+      const track2 = Track(
+        id: 'batch_2',
+        title: 'Batch 2',
+        artist: 'Artist 2',
+        duration: Duration(minutes: 3),
+        audioUrl: '/storage/music/track2.mp3',
+      );
+
+      final mockDataSource = MockLocalAudioDataSource(
+        hasPermission: true,
+        tracksToReturn: [track1, track2],
+      );
+      final repo = AudioPlayerRepositoryImpl(
+        localAudioDataSource: mockDataSource,
+        initialTracks: [track1, track2],
+      );
+
+      expect(mockDataSource.deletedAudioUrls, isEmpty);
+
+      await repo.removeTracks([track1.id, track2.id], deleteFromDevice: true);
+
+      expect(mockDataSource.deletedAudioUrls, contains(track1.audioUrl));
+      expect(mockDataSource.deletedAudioUrls, contains(track2.audioUrl));
+      final remaining = await repo.getTracks();
+      expect(remaining, isEmpty);
+
+      repo.dispose();
+    });
 
     test('searchTracks finds tracks by title, artist, or album', () async {
       const sampleTrack = Track(
